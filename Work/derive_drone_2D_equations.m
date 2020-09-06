@@ -8,9 +8,9 @@ syms M % Mass of drone body (at fulcrum)
 syms I % Moment of inertia of drone body
 syms r % Distance from each rotor force to COM of drone
 syms g % Acceleration due to gravity (always negative)
-syms cx % Damping coef. of drone through air in x direction (f = cx*xdot)
-syms cz % Damping coef. of drone in z direction (f = cy*zdot)
-syms ctheta % Damping coef. of drone in theta direction (f = ct*thetadot)
+syms C_Dx % Damping coef. of drone through air in x direction (f = C_Dx*xdot)
+syms C_Dz % Damping coef. of drone in z direction (f = cy*zdot)
+syms rho % Air density
 syms t % Time
 
 syms F1 % Rotor force on drone on left of COM
@@ -42,11 +42,13 @@ L = KE_M - PE_M;
 L = simplify(L);
 
 % Non-conservative Forces 
-Qx = -(F1 + F2)*sin(theta) - cx*dx; % ?? change cx air damping according to pitch
-Qz = -(F1 + F2)*cos(theta) - cz*dz; % NB: z is down
+% ?? Add time constant model for motor thrusts?
+Qx = -(F1 + F2)*sin(theta) - 0.5*rho*dx*abs(dx)*C_Dx; % Aerodynamic drag from A. Erasmus thesis, (3.45)
+Qz = -(F1 + F2)*cos(theta) - 0.5*rho*dz*abs(dz)*C_Dz; % NB: z is down
 
 % Non-conservative Torques
-Qtheta = F2*r - F1*r - ctheta*dtheta; % Torques caused be rotor forces and air damping
+% ?? no aerodynamic drag on rotation?
+Qtheta = F2*r - F1*r; % Torques caused be rotor forces and air damping
 
 % Lagrangian equations
 eq_x     = euler_lag(L, x, Qx, t); 
