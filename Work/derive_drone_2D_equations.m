@@ -5,7 +5,7 @@ clear all
 
 % Define symbolic variables
 syms M % Mass of drone body (at fulcrum)
-syms I % Moment of inertia of drone body
+syms I_yy % Moment of inertia of drone body about body x axis
 syms r % Distance from each rotor force to COM of drone
 syms g % Acceleration due to gravity (always negative)
 syms C_Dx % Damping coef. of drone through air in x direction (f = C_Dx*xdot)
@@ -34,7 +34,7 @@ dz        = diff(z, t);
 dtheta    = diff(theta, t);
 
 % Drone body equations
-KE_M = 0.5*M*(dx^2 + dz^2) + 0.5*I*dtheta^2; % Kinetic energy of drone body (linear + rotational)
+KE_M = 0.5*M*(dx^2 + dz^2) + 0.5*I_yy*dtheta^2; % Kinetic energy of drone body (linear + rotational)
 PE_M = M*g*z; % Potential energy of drone body
 
 % Lagrangian
