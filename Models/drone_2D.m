@@ -1,42 +1,32 @@
 function dx = drone_2D(x,u,params)
     %% Differential equations for drone in 2D without a payload
     % dx: x_dot, time derivative of state vector
-    % x: state vector
+    % x: state vector [x, z, theta]
     % u: input vector
     % params: parameters for drone model
     
     % Parameters:
-    syms M % Mass of drone body (at fulcrum)
-    syms m % Mass of swinging payload
-    syms I % Moment of inertia of drone body
-    syms l % Length of pendulum
-    syms r % Distance from each rotor force to COM of drone
-    syms g % Acceleration due to gravity (always negative)
-    syms cx % Damping coef. of drone through air in x direction (f = cx*xdot)
-    syms cz % Damping coef. of drone in z direction (f = cy*zdot)
-    syms ctheta % Damping coef. of drone in theta direction (f = ct*thetadot)
-    syms cbeta % Damping coef. of drone in theta direction (f = ct*thetadot)
+    M = params(1); % Mass of drone body (at fulcrum)
+    I = params(2); % Moment of inertia of drone body
+    r = params(3); % Distance from each rotor force to COM of drone
+    g = params(4); % Acceleration due to gravity (always negative)
+    cx = params(5); % Damping coef. of drone through air in x direction (f = cx*xdot)
+    cz = params(6); % Damping coef. of drone in z direction (f = cy*zdot)
+    ctheta = params(7); % Damping coef. of drone in theta direction (f = ct*thetadot)
     
-    % Once-off calculations to speed up computation
-    C4 = cos(x(4)); % cos(beta)
-    S4 = sin(x(4)); % sin(beta)
-    C4_2 = C4^2;
-    S4_2 = S4^2;
-    
+    % Once-off calculations to speed up computation 
     C3 = cos(x(3)); % cos(theta)
     S3 = sin(x(3)); % sin(theta)
 
+    % System equations
+    dx = zeros(6,1);
     
-    dx = zeros(8,1);
+    dx(1,1) = x(4);
+    dx(2,1) = x(5);
+    dx(3,1) = x(6);
     
-    dx(1,1) = x(5);
-    dx(2,1) = x(6);
-    dx(3,1) = x(7);
-    dx(4,1) = x(8);
-        
-    dx(5,1) = ;
-    dx(6,1) = ;
-    dx(7,1) = ;
-    dx(8,1) = ;
+    dx(4,1) = -(x(4)*cx + u(1)*S3 + u(2)*S3)/M;
+    dx(5,1) = -(M*g + x(5)*cz + u(1)*C3 + u(2)*C3)/M;
+    dx(6,1) = -(u(1)*r - u(2)*r + x(6)*ctheta)/I;
 
 end
