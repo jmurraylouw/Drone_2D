@@ -13,8 +13,8 @@ syms C_Dz % Damping coef. of drone in z direction (f = cy*zdot)
 syms rho % Air density
 syms t % Time
 
-syms F1 % Rotor force on drone on left of COM
-syms F2 % Rotor force on drone on right of COM
+syms T1 % Rotor thrust on drone on left of COM
+syms T2 % Rotor thrust on drone on right of COM
 
 syms x(t) % x position of drone
 syms z(t) % z position of drone
@@ -48,7 +48,7 @@ Qz = -(F1 + F2)*cos(theta) - 0.5*rho*dz*abs(dz)*C_Dz; % NB: z is down
 
 % Non-conservative Torques
 % ?? no aerodynamic drag on rotation?
-Qtheta = F2*r - F1*r; % Torques caused be rotor forces and air damping
+Qtheta = F2*r - F1*r; % Torques caused be rotor forces
 
 % Lagrangian equations
 eq_x     = euler_lag(L, x, Qx, t); 
