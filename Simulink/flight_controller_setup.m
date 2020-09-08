@@ -1,3 +1,4 @@
+
 % Initial conditions
 x0 = zeros(6,1); 
 % x0(3) = 0.1;
@@ -14,5 +15,5 @@ rho = 1.225; % Air density (kg/m^3)
 tau = 0.07; % Motor time constant
 
 % Mixing Matrix.
-MM = [-1, -1;
-       1, -1]; % [F1; F2] = MM*[delta_E; delta_T]
+MM = [-1, 1;
+       1, 1]; % [F1; F2] = MM*[delta_E; delta_T]
