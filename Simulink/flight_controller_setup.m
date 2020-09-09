@@ -1,5 +1,19 @@
+%% PID controllers
+load('drone_2D_PID_controllers.mat');
 
-% Initial conditions
+% Angular rate controller
+kp_Omega = D_Omega.Kp;
+ki_Omega = D_Omega.Ki;
+kd_Omega = D_Omega.Kd;
+
+% Angle controller
+kp_theta = D_theta.Kp;
+
+%% Save exported controllers from Simulink Tuner
+% For when a new controller is designed and exported
+% save('drone_2D_PID_controllers.mat', 'D_Omega', 'D_theta')
+
+%% Initial conditions
 x0 = zeros(6,1); 
 % x0(3) = 0.1;
 u0 = [0; 0];
