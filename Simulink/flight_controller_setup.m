@@ -11,7 +11,7 @@ kp_theta = D_theta.Kp;
 
 %% Save exported controllers from Simulink Tuner
 % For when a new controller is designed and exported
-% save('drone_2D_PID_controllers.mat', 'D_Omega', 'D_theta')
+save('drone_2D_PID_controllers.mat', 'D_Omega', 'D_theta', 'PID_dz')
 
 %% Initial conditions
 x0 = zeros(6,1); 
