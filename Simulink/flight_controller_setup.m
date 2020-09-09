@@ -11,6 +11,15 @@ kp_theta = PID_theta.Kp;
 % Z Velocity controller
 [kp_dz, ki_dz, kd_dz, Tf_dz] = piddata(PID_dz);
 N_dz = 1/Tf_dz; % Derivative filter constant
+
+% X Velocity controller
+kp_dx = 10;
+ki_dx = 0.05;
+kd_dx = 2;
+N_dx = 30;
+% [kp_dx, ki_dx, kd_dx, Tf_dx] = piddata(PID_dx);
+% N_dx = 1/Tf_dx; % Derivative filter constant
+
 %% Save exported controllers from Simulink Tuner
 % For when a new controller is designed and exported
 save('drone_2D_PID_controllers.mat', 'PID_dtheta', 'PID_theta', 'PID_dz')
