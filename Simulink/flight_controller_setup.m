@@ -14,11 +14,9 @@ N_dz = 1/Tf_dz; % Derivative filter constant
 
 % X Velocity controller
 kp_dx = 10;
-ki_dx = 0.05;
-kd_dx = 2;
-N_dx = 30;
-% [kp_dx, ki_dx, kd_dx, Tf_dx] = piddata(PID_dx);
-% N_dx = 1/Tf_dx; % Derivative filter constant
+ki_dx = 0.2;
+kd_dx = 1.3;
+N_dx = 100;
 
 %% Save exported controllers from Simulink Tuner
 % For when a new controller is designed and exported

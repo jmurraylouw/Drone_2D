@@ -48,36 +48,51 @@ G_theta = G_dtheta_cl*(1/s);
 D_theta = kp_theta;
 G_theta_cl = D_theta*G_theta/(1 + D_theta*G_theta); % Closed loop tf with PID control for theta
 
-%% From F_x_r to theta_sp
-% F_x_r = delta_T*sin(theta_sp)
+%% F_x_r to theta_sp
+% F_x_r = -delta_T*sin(theta_sp)
 % Small angle approx: sin(theta_sp) == theta_sp
 % Therefore: F_x_r = delta_T*(theta_sp)
 
 % F_z = -delta_T*cos(theta)
-% Small angle approx: cos(theta) == theta
+% Small angle approx: cos(theta) == 1
 % Therefore: F_z = -delta_T
 % Linearise condition: F_z = Mg
 delta_T = -M*g;
-eqn = (F_x_r == delta_T*(theta_sp));
+eqn = (F_x_r == -delta_T*(theta_sp));
 theta_sp = solve(eqn, theta_sp);
-G_theta_sp = theta_sp/F_x_r;
+G_theta_sp = theta_sp/F_x_r
 
-%% From F_x to dx
+%% theta to dx
+% F_x = -delta_T*sin(theta)
+% Small angle approx: sin(theta_sp) == theta_sp
+F_x = -delta_T*(theta);
 eqn = (F_x - C_x_lin*dx == s*M*dx); % Equation of Newton 2nd law in x direction
 dx = solve(eqn, dx); % Solve for dx according to F_x from Newton 2nd law
-G_dx = dx/F_x; % TF from F_x to dx
+G_th_dx = dx/theta; % TF from theta to dx
 
-%%
-% Substitute paramater values
-I_yy = 0.235; % Moment of inertia of drone body about body x axis (kg.m^3)
-tau = 0.07; % Time constant for motors (s)
-r = 0.49*1/sqrt(2); % Distance from COM to rotor thrust (m)
-G_dtheta = subs(G_dtheta);
-C_Dx = 0.2; % Body Aerodynamic Coefficient in x (m^2)
+%% F_x_r to dx
+G_dx = G_theta_sp*G_theta_cl*G_th_dx;
+
+% Model parameters
+M = 4.5; % Mass of drone body (at fulcrum)
+I_yy = 0.235; % Moment of inertia of drone body about body x axis
+r = 0.49*1/sqrt(2); % Distance from each rotor force to COM of drone
+g = -9.81; % Acceleration due to gravity (always negative)
+C_Dx = 0.2 ;% Damping coef. of drone through air in x direction (f = C_Dx*xdot)
+C_Dz = 0.2; % Damping coef. of drone in z direction (f = cy*zdot)
+rho = 1.225; % Air density (kg/m^3)
+tau = 0.07; % Motor time constant
+dx_bar = 5; % Average x velocity to linearise (m/s)
 C_x_lin = C_Dx*dx_bar; % Drag coef of linearised drag with average velocity
 
+% Substitute paramater values
+G_dtheta = subs(G_dtheta);
+G_dx = subs(G_dx);
+
 % Convert to tf object
-G_dtheta = sym2tf(G_dtheta)
+G_dtheta = sym2tf(G_dtheta);
+G_dx = sym2tf(subs(G_dx));
+G_th_dx = sym2tf(subs(G_th_dx))
 
 % %% Display values from angular rate controller design
 % D_Omega_y.Kp
