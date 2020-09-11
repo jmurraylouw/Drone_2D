@@ -90,7 +90,7 @@ G_dtheta = subs(G_dtheta);
 G_dx = subs(G_dx);
 
 % Convert to tf object
-G_dtheta = sym2tf(G_dtheta);
+G_dtheta = sym2tf(G_dtheta)
 G_dx = sym2tf(subs(G_dx));
 G_th_dx = sym2tf(subs(G_th_dx))
 
