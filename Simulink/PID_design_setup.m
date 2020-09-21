@@ -13,6 +13,18 @@ syms dx M F_x C_x_lin
 syms g
 syms F_x_r
 
+% Model parameters
+M = 4.5; % Mass of drone body (at fulcrum)
+I_yy = 0.235; % Moment of inertia of drone body about body x axis
+r = 0.49*1/sqrt(2); % Distance from each rotor force to COM of drone
+g = -9.81; % Acceleration due to gravity (always negative)
+C_Dx = 0.2 ;% Damping coef. of drone through air in x direction (f = C_Dx*xdot)
+C_Dz = 0.2; % Damping coef. of drone in z direction (f = cy*zdot)
+rho = 1.225; % Air density (kg/m^3)
+tau = 0.07; % Motor time constant
+dx_bar = 5; % Average x velocity to linearise (m/s)
+C_x_lin = C_Dx*dx_bar; % Drag coef of linearised drag with average velocity
+
 % Motor mixing algorithm
 T1_r = -delta_E; % Thrust reference 1
 T2_r = delta_E; % Thrust reference 2
@@ -35,6 +47,14 @@ dtheta = (1/s)*ddtheta; % Angular velocity is integral of Angular accelration
 % Transfer function from delta_E to dtheta
 G_dtheta = dtheta/delta_E;
 
+% Substitute paramater values
+G_dtheta = subs(G_dtheta);
+
+% Open-loop root locus
+figure
+rlocus(sym2tf(G_dtheta));
+stop
+
 % Design requirements:
 
 % Reject disturbances
@@ -49,8 +69,8 @@ ts = 0.6; % 2% settling time (s)
 
 % Percentage overshoot:
 zeta = sqrt( (log(PO/100))^2 / (pi^2 + (log(PO/100))^2) );  % Damping ratio
-theta = atan(sqrt(1 - zeta^2) / zeta); % Max angle from real axis to dominant pole
-
+theta = atan(sqrt(1 - zeta^2) / zeta) % Max angle from real axis to dominant pole
+stop
 % Settling time:
 sigma = -log(0.02)/ts % Real part limit of dominant pole
 
@@ -65,11 +85,12 @@ z_c = 0.1;
 % Draw root locus
 figure;
 hold on;
-rlocus();
+rlocus(sym2tf(sym_TF));
 
 % Plot requirement limits
 plot([1, 1]*sigma, ylim); % Settling time requirement limit
-
+x_theta = max(ylim)/tan(theta); % x to plot theta line
+plot([-1, 0, -1]*x_theta, [1, 0, -1]*max(ylim));
 
 % Transfer function of dtheta PID controller 
 D_dtheta = kp_dtheta + ki_dtheta*(1/s) + kd_dtheta*(s/(1/N_dtheta*s + 1));
@@ -146,6 +167,8 @@ function TF = sym2tf(sym_TF)
 % Converts symbolic representation of transfer function
 % to a transfer function object
 % from: https://www.mathworks.com/matlabcentral/answers/310042-how-to-convert-symbolic-expressions-to-transfer-functions
+
+    class(sym_TF)
     ExpFun = matlabFunction(sym_TF);
     ExpFun = str2func(regexprep(func2str(ExpFun), '\.([/^\\*])', '$1'));
     TF = ExpFun(tf('s'));
