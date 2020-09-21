@@ -1,5 +1,5 @@
 %% Design for angular rate controller
-
+close all
 % s = tf('s'); % transfer function variable
 % G_Omega_y = (2*r/(tau*I_yy))/(s + (s + 1/tau)); % Omega_y/delta_E_r(s). Transfer function from elevator reference to angular rate
 
@@ -51,9 +51,9 @@ G_dtheta = dtheta/delta_E;
 G_dtheta = subs(G_dtheta);
 
 % Open-loop root locus
-figure
+figure;
 rlocus(sym2tf(G_dtheta));
-stop
+title('Plant with proportional feedback: delta_E to dtheta')
 
 % Design requirements:
 
@@ -64,15 +64,27 @@ stop
 % 2% settling time = 0.6 s
 
 PO = 4.2; % Percentage Overshoot (%)
-wb = 13; % Bandwidth (rad/s)
-ts = 0.6; % 2% settling time (s)
+wb = 13; % Desired dandwidth (rad/s)
+ts = 0.61; % 2% settling time (s)
+
+% Bode of open loop plant
+figure;
+bode(sym2tf(G_dtheta));
+title('Bode plot of open-loop plant: delta_E to dtheta')
+grid on;
+
+% Get kp needed for bandwidth
+[mag,phase,wout] = bode(sym2tf(G_dtheta), wb);
+mag
+kp_dtheta = 10^(-3/20) - mag
+stop% Gain needed for desired bandwidth
 
 % Percentage overshoot:
 zeta = sqrt( (log(PO/100))^2 / (pi^2 + (log(PO/100))^2) );  % Damping ratio
-theta = atan(sqrt(1 - zeta^2) / zeta) % Max angle from real axis to dominant pole
-stop
+theta = atan(sqrt(1 - zeta^2) / zeta); % Max angle from real axis to dominant pole
+
 % Settling time:
-sigma = -log(0.02)/ts % Real part limit of dominant pole
+sigma_p = log(0.02)/ts; % Real part limit of dominant pole, p for pole to avoid confusion with noise
 
 % First implement PI controller
 % D_PI = Kp*(s + z_c) / s
@@ -80,19 +92,26 @@ sigma = -log(0.02)/ts % Real part limit of dominant pole
 % Use P controller to place in performance envelope
 
 % Pole of D_PI is at origin, so let zero be close to origin: z_c = 0.1
-z_c = 0.1;
+z_c = 0.1; % z_c = ki/kp
+D_pi = (s + z_c) / s; % transfer function of Pi controller without kp
 
 % Draw root locus
 figure;
+
+rlocus(sym2tf(D_pi*G_dtheta));
 hold on;
-rlocus(sym2tf(sym_TF));
 
 % Plot requirement limits
-plot([1, 1]*sigma, ylim); % Settling time requirement limit
+plot([1, 1]*sigma_p, ylim, '--'); % Settling time requirement limit
 x_theta = max(ylim)/tan(theta); % x to plot theta line
-plot([-1, 0, -1]*x_theta, [1, 0, -1]*max(ylim));
+plot([-1, 0, -1]*x_theta, [1, 0, -1]*max(ylim), '--');
 
-% Transfer function of dtheta PID controller 
+% Choose kp for G_dtheta
+kp_dtheta = 1.29
+
+
+
+%% Transfer function of dtheta PID controller 
 D_dtheta = kp_dtheta + ki_dtheta*(1/s) + kd_dtheta*(s/(1/N_dtheta*s + 1));
 G_dtheta_cl = D_dtheta*G_dtheta/(1 + D_dtheta*G_dtheta); % Closed loop tf with PID control for dtheta
 
@@ -168,7 +187,6 @@ function TF = sym2tf(sym_TF)
 % to a transfer function object
 % from: https://www.mathworks.com/matlabcentral/answers/310042-how-to-convert-symbolic-expressions-to-transfer-functions
 
-    class(sym_TF)
     ExpFun = matlabFunction(sym_TF);
     ExpFun = str2func(regexprep(func2str(ExpFun), '\.([/^\\*])', '$1'));
     TF = ExpFun(tf('s'));
