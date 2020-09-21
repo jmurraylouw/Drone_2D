@@ -35,6 +35,42 @@ dtheta = (1/s)*ddtheta; % Angular velocity is integral of Angular accelration
 % Transfer function from delta_E to dtheta
 G_dtheta = dtheta/delta_E;
 
+% Design requirements:
+
+% Reject disturbances
+% Zero steady-state error
+% overshoot = 4.2%
+% bandwidth = 12.52 rad/s
+% 2% settling time = 0.6 s
+
+PO = 4.2; % Percentage Overshoot (%)
+wb = 13; % Bandwidth (rad/s)
+ts = 0.6; % 2% settling time (s)
+
+% Percentage overshoot:
+zeta = sqrt( (log(PO/100))^2 / (pi^2 + (log(PO/100))^2) );  % Damping ratio
+theta = atan(sqrt(1 - zeta^2) / zeta); % Max angle from real axis to dominant pole
+
+% Settling time:
+sigma = -log(0.02)/ts % Real part limit of dominant pole
+
+% First implement PI controller
+% D_PI = Kp*(s + z_c) / s
+% Use I controller to reject disturbances (closed loop becomes type 2)
+% Use P controller to place in performance envelope
+
+% Pole of D_PI is at origin, so let zero be close to origin: z_c = 0.1
+z_c = 0.1;
+
+% Draw root locus
+figure;
+hold on;
+rlocus();
+
+% Plot requirement limits
+plot([1, 1]*sigma, ylim); % Settling time requirement limit
+
+
 % Transfer function of dtheta PID controller 
 D_dtheta = kp_dtheta + ki_dtheta*(1/s) + kd_dtheta*(s/(1/N_dtheta*s + 1));
 G_dtheta_cl = D_dtheta*G_dtheta/(1 + D_dtheta*G_dtheta); % Closed loop tf with PID control for dtheta
