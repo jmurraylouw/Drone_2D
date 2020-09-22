@@ -50,11 +50,6 @@ G_dtheta = dtheta/delta_E;
 % Substitute paramater values
 G_dtheta = subs(G_dtheta);
 
-% Open-loop root locus
-figure;
-rlocus(sym2tf(G_dtheta));
-title('Plant with proportional feedback: delta_E to dtheta')
-
 % Design requirements:
 
 % Reject disturbances
@@ -66,29 +61,30 @@ title('Plant with proportional feedback: delta_E to dtheta')
 PO = 4.2; % Percentage Overshoot (%)
 wb = 10; % Desired dandwidth (rad/s)
 ts = 0.61; % 2% settling time (s)
-% bode(sym2tf(kp_dtheta*G_dtheta))
-% grid on;
-% stop
-% Get kp needed for bandwidth
-
-% Bode of closed loop plant with unity feedback
-figure;
-kp_dtheta = 1;
-title('Bode plot of closed-loop plant: delta_E to dtheta. K = 1')
-bode(sym2tf(kp_dtheta*G_dtheta/(1 + kp_dtheta*G_dtheta))); % Bode of closed loop with unity feedback
-grid on;
 
 % Calculate Kp needed for desired bandwidth
+kp_dtheta = 1; % Let feedback gain be 1
 [mag,phase,wout] = bode(sym2tf(kp_dtheta*G_dtheta/(1 + kp_dtheta*G_dtheta)), wb);
 K_dB = 20*log10(1/sqrt(2)) - 20*log10(mag); % How much gain in dB must be added to reach -3dB at wb
 kp_dtheta = 10^(K_dB/20); % Gain needed for desired bandwidth
 
-%% Bode of closed loop plant with Kp
+% Bode of closed loop plant with Kp
 figure;
 bode(sym2tf(kp_dtheta*G_dtheta/(1 + kp_dtheta*G_dtheta)));
 title('Closed-loop with Kp for desired bandwidth: delta_E to dtheta. ');
 grid on;
-stop
+
+% Draw root locus of plant with proportional controller
+figure;
+rlocus(sym2tf(G_dtheta));
+title('Root locus with P controller varied by kp')
+hold on;
+
+% Plot current poles for kp needed for bandwidth
+current_pole = rlocus(sym2tf(D_pi*G_dtheta), kp_dtheta);
+plot(real(current_pole), imag(current_pole), 'rx', 'Markersize', 10); % Plot current pole locatiosn
+hold off;
+
 % Percentage overshoot:
 zeta = sqrt( (log(PO/100))^2 / (pi^2 + (log(PO/100))^2) );  % Damping ratio
 theta = atan(sqrt(1 - zeta^2) / zeta); % Max angle from real axis to dominant pole
@@ -107,22 +103,25 @@ D_pi = (s + z_c) / s; % transfer function of Pi controller without kp
 
 % Draw root locus
 figure;
-
 rlocus(sym2tf(D_pi*G_dtheta));
+title('Root locus with PI controller varied by kp')
 hold on;
+
+% Plot current poles for kp needed for bandwidth
+current_pole = rlocus(sym2tf(D_pi*G_dtheta), kp_dtheta);
+plot(real(current_pole), imag(current_pole), 'rx', 'Markersize', 10); % Plot current pole locatiosn
+ylim([min(imag(current_pole)), max(imag(current_pole))]*1.2); % adjust ylim to include plotted poles
 
 % Plot requirement limits
 plot([1, 1]*sigma_p, ylim, '--'); % Settling time requirement limit
 x_theta = max(ylim)/tan(theta); % x to plot theta line
 plot([-1, 0, -1]*x_theta, [1, 0, -1]*max(ylim), '--');
 
-% Choose kp for G_dtheta
-kp_dtheta = 1.29
-
-
+% Calculate ki from z_c and kp
+ki_dtheta = kp_dtheta*z_c;
 
 %% Transfer function of dtheta PID controller 
-D_dtheta = kp_dtheta + ki_dtheta*(1/s) + kd_dtheta*(s/(1/N_dtheta*s + 1));
+D_dtheta = kp_dtheta + ki_dtheta*(1/s) + kd_dtheta*s;
 G_dtheta_cl = D_dtheta*G_dtheta/(1 + D_dtheta*G_dtheta); % Closed loop tf with PID control for dtheta
 
 % TF from dtehta_sp to theta (seen by angular rate controller)
