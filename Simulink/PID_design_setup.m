@@ -64,21 +64,31 @@ title('Plant with proportional feedback: delta_E to dtheta')
 % 2% settling time = 0.6 s
 
 PO = 4.2; % Percentage Overshoot (%)
-wb = 13; % Desired dandwidth (rad/s)
+wb = 10; % Desired dandwidth (rad/s)
 ts = 0.61; % 2% settling time (s)
+% bode(sym2tf(kp_dtheta*G_dtheta))
+% grid on;
+% stop
+% Get kp needed for bandwidth
 
-% Bode of open loop plant
+% Bode of closed loop plant with unity feedback
 figure;
-bode(sym2tf(G_dtheta));
-title('Bode plot of open-loop plant: delta_E to dtheta')
+kp_dtheta = 1;
+title('Bode plot of closed-loop plant: delta_E to dtheta. K = 1')
+bode(sym2tf(kp_dtheta*G_dtheta/(1 + kp_dtheta*G_dtheta))); % Bode of closed loop with unity feedback
 grid on;
 
-% Get kp needed for bandwidth
-[mag,phase,wout] = bode(sym2tf(G_dtheta), wb);
-mag
-kp_dtheta = 10^(-3/20) - mag
-stop% Gain needed for desired bandwidth
+% Calculate Kp needed for desired bandwidth
+[mag,phase,wout] = bode(sym2tf(kp_dtheta*G_dtheta/(1 + kp_dtheta*G_dtheta)), wb);
+K_dB = 20*log10(1/sqrt(2)) - 20*log10(mag); % How much gain in dB must be added to reach -3dB at wb
+kp_dtheta = 10^(K_dB/20); % Gain needed for desired bandwidth
 
+%% Bode of closed loop plant with Kp
+figure;
+bode(sym2tf(kp_dtheta*G_dtheta/(1 + kp_dtheta*G_dtheta)));
+title('Closed-loop with Kp for desired bandwidth: delta_E to dtheta. ');
+grid on;
+stop
 % Percentage overshoot:
 zeta = sqrt( (log(PO/100))^2 / (pi^2 + (log(PO/100))^2) );  % Damping ratio
 theta = atan(sqrt(1 - zeta^2) / zeta); % Max angle from real axis to dominant pole
