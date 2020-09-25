@@ -125,7 +125,7 @@ ki_dtheta = kp_dtheta*z_c;
 syms kd_dtheta
 D_dtheta = @(kd_dtheta) kp_dtheta + ki_dtheta*(1/s) + kd_dtheta*s;
 G_dtheta_cl = @(kd_dtheta) D_dtheta(kd_dtheta)*G_dtheta/(1 + D_dtheta(kd_dtheta)*G_dtheta); % Closed loop tf with PID control for dtheta
-
+% ???? Maybe use 3d plot to see effect of k
 figure;
 hold on;
 for kd_dtheta = 0:0.01:2
