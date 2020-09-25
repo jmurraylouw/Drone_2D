@@ -120,11 +120,25 @@ plot([-1, 0, -1]*x_theta, [1, 0, -1]*max(ylim), '--');
 % Calculate ki from z_c and kp
 ki_dtheta = kp_dtheta*z_c;
 
-% Transfer function of dtheta PID controller 
-D_dtheta = kp_dtheta + ki_dtheta*(1/s) + kd_dtheta*s;
-G_dtheta_cl = D_dtheta*G_dtheta/(1 + D_dtheta*G_dtheta); % Closed loop tf with PID control for dtheta
-pzmap()
+% PID controller for dtheta
+% Manual root locus plot of closed loop system with PID controller
+syms kd_dtheta
+D_dtheta = @(kd_dtheta) kp_dtheta + ki_dtheta*(1/s) + kd_dtheta*s;
+G_dtheta_cl = @(kd_dtheta) D_dtheta(kd_dtheta)*G_dtheta/(1 + D_dtheta(kd_dtheta)*G_dtheta); % Closed loop tf with PID control for dtheta
 
+figure;
+hold on;
+for kd_dtheta = 0:0.01:2
+    poles = pole(sym2tf(G_dtheta_cl(kd_dtheta)));
+    plot(real(poles), imag(poles), 'k.'); % Plot pole of current k
+end
+
+% Starting poles
+poles = pole(sym2tf(G_dtheta_cl(0)));
+plot(real(poles), imag(poles), 'rx'); % Plot pole of current k
+
+hold off
+stop
 % TF from dtehta_sp to theta (seen by angular rate controller)
 theta = (1/s)*dtheta;
 % dtheta = G_dtheta_cl*theta_sp;
