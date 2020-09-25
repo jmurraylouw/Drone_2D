@@ -62,29 +62,11 @@ PO = 4.2; % Percentage Overshoot (%)
 wb = 12.52; % Desired dandwidth (rad/s)
 ts = 0.6; % 2% settling time (s)
 
-%% Calculate Kp needed for desired bandwidth (Binary search)
-kp_min = 0.01;
+%% Calculate Kp needed for desired bandwidth
+kp_min = 0.001;
 kp_max = 10;
 wb_tol = 0.001; % tolerance on bandwidth frequency
-kp_found = 0; % 1 = kp found for desired wb
-
-for i = 1:1000
-    kp_mid = mean([kp_max,kp_min]);
-    sys = sym2tf(kp_mid*G_dtheta/(1 + kp_mid*G_dtheta));
-    wb_actual = bandwidth(sys); % Final bandwidth
-    if abs(wb - wb_actual) < wb_tol
-        kp_found = 1;
-        break;
-    elseif wb_actual > wb
-        kp_max = kp_mid;
-    else
-        kp_min = kp_mid;
-    end
-end
-if ~kp_found
-    error('kp_dtheta not found. Improve search space')
-end
-kp_dtheta = kp_mid;
+kp_dtheta = kp_for_bandwidth(G_dtheta,wb,wb_tol,kp_min,kp_max)
 
 %% Bode of closed loop plant with Kp
 figure;
@@ -162,12 +144,16 @@ plot(real(poles), imag(poles), 'bx'); % Plot pole of current k
 plot([1, 1]*sigma_p, ylim, '--'); % Settling time requirement limit
 x_theta = max(ylim)/tan(theta); % x to plot theta line
 plot([-1, 0, -1]*x_theta, [1, 0, -1]*max(ylim), '--');
+grid on;
 
 %% Current poles
 % Choose kd to place poles within desired region
 kd_dtheta = 0.06;
 poles = pole(sym2tf(G_dtheta_cl(kd_dtheta)));
 plot(real(poles), imag(poles), 'rx', 'MarkerSize', 10); % Plot pole of current k
+
+% Low pass filter
+N_dtheta = 100;
 
 %%
 G_dtheta_cl = simplifyFraction(subs(G_dtheta_cl(kd_dtheta))); % Convert type to symbolic, not anonymous function
@@ -187,31 +173,13 @@ G_theta = simplifyFraction(G_dtheta_cl*(1/s));
 
 PO = 0; % Percentage Overshoot (%)
 wb = 4.41; % Desired dandwidth (rad/s)
-ts = 0.95; % 2% settling time (s)
+ts = 1.95; % 2% settling time (s)
 
 %% Calculate Kp needed for desired bandwidth (Binary search)
-kp_min = 0.01;
+wb_tol = 0.001;
+kp_min = 0.001;
 kp_max = 10;
-wb_tol = 0.001; % tolerance on bandwidth frequency
-kp_found = 0; % 1 = kp found for desired wb
-
-for i = 1:1000
-    kp_mid = mean([kp_max,kp_min]);
-    sys = sym2tf(kp_mid*G_dtheta/(1 + kp_mid*G_dtheta));
-    wb_actual = bandwidth(sys); % Final bandwidth
-    if abs(wb - wb_actual) < wb_tol
-        kp_found = 1;
-        break;
-    elseif wb_actual > wb
-        kp_max = kp_mid;
-    else
-        kp_min = kp_mid;
-    end
-end
-if ~kp_found
-    error('kp_dtheta not found. Improve search space')
-end
-kp_dtheta = kp_mid;
+kp_theta = kp_for_bandwidth(G_theta,wb,wb_tol,kp_min,kp_max);
 
 %% Transfer function with theta and P controller 
 D_theta = kp_theta;
@@ -230,17 +198,16 @@ title('G_theta root locus with P controller varied by kp')
 hold on;
 
 %% Plot current poles for kp needed for bandwidth
-current_pole = rlocus(sym2tf(kp_dtheta*G_dtheta), kp_dtheta);
+current_pole = rlocus(sym2tf(kp_theta*G_theta), kp_theta);
 plot(real(current_pole), imag(current_pole), 'rx', 'Markersize', 10); % Plot current pole locatiosn
-hold off;
-
-% Percentage overshoot:
-zeta = sqrt( (log(PO/100))^2 / (pi^2 + (log(PO/100))^2) );  % Damping ratio
-theta = atan(sqrt(1 - zeta^2) / zeta); % Max angle from real axis to dominant pole
 
 % Settling time:
 sigma_p = log(0.02)/ts; % Real part limit of dominant pole, p for pole to avoid confusion with noise
 
+% Plot requirement limits
+plot([1, 1]*sigma_p, ylim, '--'); % Settling time requirement limit
+
+stop
 %% F_x_r to theta_sp
 % F_x_r = -delta_T*sin(theta_sp)
 % Small angle approx: sin(theta_sp) == theta_sp
@@ -309,6 +276,36 @@ function TF = sym2tf(sym_TF)
     TF = ExpFun(tf('s'));
 end
 
+function kp = kp_for_bandwidth(G,wb,wb_tol,kp_min,kp_max)
+% Find proportional feedback needed for specific bandwidth of transfer function
+% Using Binary search
+% kp = proportional feedback gain
+% G = open loop transfer function
+% wb = desired bandwidth
+% wb_tol = allowable tolerance on bandwidth
+% kp_min = minimum kp
+% kp_min = minimum kp
+
+    max_iterations = 1000;
+    for i = 1:max_iterations
+        kp_mid = mean([kp_max,kp_min]);
+        sys = sym2tf(kp_mid*G/(1 + kp_mid*G));
+        wb_actual = bandwidth(sys); % Final bandwidth
+        if abs(wb - wb_actual) < wb_tol
+            kp_found = 1;
+            break;
+        elseif wb_actual > wb
+            kp_max = kp_mid;
+        else
+            kp_min = kp_mid;
+        end
+    end
+    if ~kp_found
+        error('kp_dtheta not found. Try changing search space')
+    end
+    kp = kp_mid;
+    
+end
 
 
 
