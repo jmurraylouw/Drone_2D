@@ -3,15 +3,15 @@ close all
 % s = tf('s'); % transfer function variable
 % G_Omega_y = (2*r/(tau*I_yy))/(s + (s + 1/tau)); % Omega_y/delta_E_r(s). Transfer function from elevator reference to angular rate
 
-syms s % Laplace variable
-syms delta_E
-syms I_yy % Moment of inertia of drone body about body x axis (kg.m^3)
-syms tau % Time constant for motors (s)
-syms r % Distance from COM to rotor thrust (m)
-syms theta_sp % Pitch set-point (rad)
-syms dx M F_x C_x_lin
-syms g
-syms F_x_r
+% syms s % Laplace variable
+% syms delta_E
+% syms I_yy % Moment of inertia of drone body about body x axis (kg.m^3)
+% syms tau % Time constant for motors (s)
+% syms r % Distance from COM to rotor thrust (m)
+% syms theta_sp % Pitch set-point (rad)
+% syms dx M F_x C_x_lin
+% syms g
+% syms F_x_r
 
 % Model parameters
 M = 4.5; % Mass of drone body (at fulcrum)
@@ -24,6 +24,8 @@ rho = 1.225; % Air density (kg/m^3)
 tau = 0.07; % Motor time constant
 dx_bar = 5; % Average x velocity to linearise (m/s)
 C_x_lin = C_Dx*dx_bar; % Drag coef of linearised drag with average velocity
+
+s = tf('s'); % Laplace varaible
 
 % Motor mixing algorithm
 T1_r = -delta_E; % Thrust reference 1
@@ -120,9 +122,10 @@ plot([-1, 0, -1]*x_theta, [1, 0, -1]*max(ylim), '--');
 % Calculate ki from z_c and kp
 ki_dtheta = kp_dtheta*z_c;
 
-%% Transfer function of dtheta PID controller 
+% Transfer function of dtheta PID controller 
 D_dtheta = kp_dtheta + ki_dtheta*(1/s) + kd_dtheta*s;
 G_dtheta_cl = D_dtheta*G_dtheta/(1 + D_dtheta*G_dtheta); % Closed loop tf with PID control for dtheta
+pzmap()
 
 % TF from dtehta_sp to theta (seen by angular rate controller)
 theta = (1/s)*dtheta;
