@@ -207,6 +207,8 @@ sigma_p = log(0.02)/ts; % Real part limit of dominant pole, p for pole to avoid 
 % Plot requirement limits
 plot([1, 1]*sigma_p, ylim, '--'); % Settling time requirement limit
 
+description = 'PID gain values from PID_design_setup.m for drone 2D';
+save('Data/Drone_2D_control_params.mat', 'description', 'kp_dtheta', 'ki_dtheta', 'kd_dtheta', 'kp_theta')
 stop
 %% F_x_r to theta_sp
 % F_x_r = -delta_T*sin(theta_sp)

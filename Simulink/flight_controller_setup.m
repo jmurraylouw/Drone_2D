@@ -1,5 +1,6 @@
 %% PID controllers
 % load('drone_2D_PID_controllers.mat');
+load('Data/Drone_2D_control_params.mat'); % Load controller gain values
 
 % % Pitch Angular rate controller
 % [kp_dtheta, ki_dtheta, kd_dtheta, Tf_dtheta] = piddata(PID_dtheta);
