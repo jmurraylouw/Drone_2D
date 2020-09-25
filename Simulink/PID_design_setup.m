@@ -59,18 +59,36 @@ G_dtheta = subs(G_dtheta); % Substitute paramater values
 % Reject disturbances
 % Zero steady-state error
 PO = 4.2; % Percentage Overshoot (%)
-wb = 10; % Desired dandwidth (rad/s)
+wb = 12.52; % Desired dandwidth (rad/s)
 ts = 0.6; % 2% settling time (s)
 
-%% Calculate Kp needed for desired bandwidth
-kp_dtheta = 1; % Let feedback gain be 1
-[mag,phase,wout] = bode(sym2tf(kp_dtheta*G_dtheta/(1 + kp_dtheta*G_dtheta)), wb);
-K_dB = 20*log10(1/sqrt(2)) - 20*log10(mag); % How much gain in dB must be added to reach -3dB at wb
-kp_dtheta = 10^(K_dB/20); % Gain needed for desired bandwidth
+%% Calculate Kp needed for desired bandwidth (Binary search)
+kp_min = 0.01;
+kp_max = 10;
+wb_tol = 0.001; % tolerance on bandwidth frequency
+kp_found = 0; % 1 = kp found for desired wb
+
+for i = 1:1000
+    kp_mid = mean([kp_max,kp_min]);
+    sys = sym2tf(kp_mid*G_dtheta/(1 + kp_mid*G_dtheta));
+    wb_actual = bandwidth(sys); % Final bandwidth
+    if abs(wb - wb_actual) < wb_tol
+        kp_found = 1;
+        break;
+    elseif wb_actual > wb
+        kp_max = kp_mid;
+    else
+        kp_min = kp_mid;
+    end
+end
+if ~kp_found
+    error('kp_dtheta not found. Improve search space')
+end
+kp_dtheta = kp_mid;
 
 %% Bode of closed loop plant with Kp
 figure;
-bode(sym2tf(kp_dtheta*G_dtheta/(1 + kp_dtheta*G_dtheta)));
+bode(sys);
 title('Closed-loop with Kp for desired bandwidth: delta_E to dtheta. ');
 grid on;
 
@@ -104,7 +122,7 @@ D_pi = (s + z_c) / s; % transfer function of Pi controller without kp
 % Draw root locus
 figure;
 rlocus(sym2tf(D_pi*G_dtheta));
-title('Root locus with PI controller varied by kp')
+title('G_dtheta root locus with PI controller varied by kp')
 hold on;
 
 % Plot current poles for kp needed for bandwidth
@@ -130,7 +148,8 @@ G_dtheta_cl = @(kd_dtheta) D_dtheta(kd_dtheta)*G_dtheta/(1 + D_dtheta(kd_dtheta)
 % ???? Maybe use 3d plot to see effect of k
 figure;
 hold on;
-for kd_dtheta = 0:0.01:1
+
+for kd_dtheta = 0:0.01:0.5
     poles = pole(sym2tf(G_dtheta_cl(kd_dtheta)));
     plot(real(poles), imag(poles), 'k.'); % Plot pole of current k
 end
@@ -146,9 +165,12 @@ plot([-1, 0, -1]*x_theta, [1, 0, -1]*max(ylim), '--');
 
 %% Current poles
 % Choose kd to place poles within desired region
-kd_dtheta = 0.02;
+kd_dtheta = 0.06;
 poles = pole(sym2tf(G_dtheta_cl(kd_dtheta)));
 plot(real(poles), imag(poles), 'rx', 'MarkerSize', 10); % Plot pole of current k
+
+%%
+G_dtheta_cl = simplifyFraction(subs(G_dtheta_cl(kd_dtheta))); % Convert type to symbolic, not anonymous function
 
 %%-------------------------------------------------------------
 %% Angle controller
@@ -156,35 +178,55 @@ plot(real(poles), imag(poles), 'rx', 'MarkerSize', 10); % Plot pole of current k
 % TF from dtehta_sp to theta (seen by angular rate controller)
 % theta = (1/s)*dtheta;
 % dtheta = G_dtheta_cl*theta_sp;
-G_theta = G_dtheta_cl*(1/s);
+G_theta = simplifyFraction(G_dtheta_cl*(1/s));
 
 %% Design requirements:
-
 % Zero steady-state error
-% overshoot = %
-% bandwidth = rad/s
-% 2% settling time = s
+% Overdamped
+% Timescale seperation from inner loop
 
-PO = 4.2; % Percentage Overshoot (%)
-wb = 10; % Desired dandwidth (rad/s)
-ts = 0.6; % 2% settling time (s)
+PO = 0; % Percentage Overshoot (%)
+wb = 4.41; % Desired dandwidth (rad/s)
+ts = 0.95; % 2% settling time (s)
 
-%% Calculate Kp needed for desired bandwidth
-kp_dtheta = 1; % Let feedback gain be 1
-[mag,phase,wout] = bode(sym2tf(kp_dtheta*G_dtheta/(1 + kp_dtheta*G_dtheta)), wb);
-K_dB = 20*log10(1/sqrt(2)) - 20*log10(mag); % How much gain in dB must be added to reach -3dB at wb
-kp_dtheta = 10^(K_dB/20); % Gain needed for desired bandwidth
+%% Calculate Kp needed for desired bandwidth (Binary search)
+kp_min = 0.01;
+kp_max = 10;
+wb_tol = 0.001; % tolerance on bandwidth frequency
+kp_found = 0; % 1 = kp found for desired wb
+
+for i = 1:1000
+    kp_mid = mean([kp_max,kp_min]);
+    sys = sym2tf(kp_mid*G_dtheta/(1 + kp_mid*G_dtheta));
+    wb_actual = bandwidth(sys); % Final bandwidth
+    if abs(wb - wb_actual) < wb_tol
+        kp_found = 1;
+        break;
+    elseif wb_actual > wb
+        kp_max = kp_mid;
+    else
+        kp_min = kp_mid;
+    end
+end
+if ~kp_found
+    error('kp_dtheta not found. Improve search space')
+end
+kp_dtheta = kp_mid;
+
+%% Transfer function with theta and P controller 
+D_theta = kp_theta;
+G_theta_cl = D_theta*G_theta/(1 + D_theta*G_theta); % Closed loop tf with PID control for theta
 
 %% Bode of closed loop plant with Kp
 figure;
-bode(sym2tf(kp_dtheta*G_dtheta/(1 + kp_dtheta*G_dtheta)));
-title('Closed-loop with Kp for desired bandwidth: delta_E to dtheta. ');
+bode(sym2tf(G_theta_cl));
+title('Closed-loop with Kp for desired bandwidth: G_theta. ');
 grid on;
 
 %% Draw root locus of plant with proportional controller
 figure;
-rlocus(sym2tf(G_dtheta));
-title('Root locus with P controller varied by kp')
+rlocus(sym2tf(G_theta));
+title('G_theta root locus with P controller varied by kp')
 hold on;
 
 %% Plot current poles for kp needed for bandwidth
@@ -198,10 +240,6 @@ theta = atan(sqrt(1 - zeta^2) / zeta); % Max angle from real axis to dominant po
 
 % Settling time:
 sigma_p = log(0.02)/ts; % Real part limit of dominant pole, p for pole to avoid confusion with noise
-
-% Transfer function with theta and P controller 
-D_theta = kp_theta;
-G_theta_cl = D_theta*G_theta/(1 + D_theta*G_theta); % Closed loop tf with PID control for theta
 
 %% F_x_r to theta_sp
 % F_x_r = -delta_T*sin(theta_sp)
