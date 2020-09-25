@@ -1,5 +1,7 @@
-%% Design for angular rate controller
+%% Design of cascaded loop controllers for 2D drone
+
 close all
+
 % s = tf('s'); % transfer function variable
 % G_Omega_y = (2*r/(tau*I_yy))/(s + (s + 1/tau)); % Omega_y/delta_E_r(s). Transfer function from elevator reference to angular rate
 
@@ -44,43 +46,41 @@ ddtheta = M_By/I_yy;
 % Integrator
 dtheta = (1/s)*ddtheta; % Angular velocity is integral of Angular accelration
 
+%%-------------------------------------------------------------
+%% Angular rate controller
+%%-------------------------------------------------------------
+
 % Transfer function from delta_E to dtheta
 G_dtheta = dtheta/delta_E;
+G_dtheta = subs(G_dtheta); % Substitute paramater values
 
-% Substitute paramater values
-G_dtheta = subs(G_dtheta);
-
-% Design requirements:
+%% Design requirements:
 
 % Reject disturbances
 % Zero steady-state error
-% overshoot = 4.2%
-% bandwidth = 12.52 rad/s
-% 2% settling time = 0.6 s
-
 PO = 4.2; % Percentage Overshoot (%)
 wb = 10; % Desired dandwidth (rad/s)
-ts = 0.61; % 2% settling time (s)
+ts = 0.6; % 2% settling time (s)
 
-% Calculate Kp needed for desired bandwidth
+%% Calculate Kp needed for desired bandwidth
 kp_dtheta = 1; % Let feedback gain be 1
 [mag,phase,wout] = bode(sym2tf(kp_dtheta*G_dtheta/(1 + kp_dtheta*G_dtheta)), wb);
 K_dB = 20*log10(1/sqrt(2)) - 20*log10(mag); % How much gain in dB must be added to reach -3dB at wb
 kp_dtheta = 10^(K_dB/20); % Gain needed for desired bandwidth
 
-% Bode of closed loop plant with Kp
+%% Bode of closed loop plant with Kp
 figure;
 bode(sym2tf(kp_dtheta*G_dtheta/(1 + kp_dtheta*G_dtheta)));
 title('Closed-loop with Kp for desired bandwidth: delta_E to dtheta. ');
 grid on;
 
-% Draw root locus of plant with proportional controller
+%% Draw root locus of plant with proportional controller
 figure;
 rlocus(sym2tf(G_dtheta));
 title('Root locus with P controller varied by kp')
 hold on;
 
-% Plot current poles for kp needed for bandwidth
+%% Plot current poles for kp needed for bandwidth
 current_pole = rlocus(sym2tf(kp_dtheta*G_dtheta), kp_dtheta);
 plot(real(current_pole), imag(current_pole), 'rx', 'Markersize', 10); % Plot current pole locatiosn
 hold off;
@@ -92,7 +92,7 @@ theta = atan(sqrt(1 - zeta^2) / zeta); % Max angle from real axis to dominant po
 % Settling time:
 sigma_p = log(0.02)/ts; % Real part limit of dominant pole, p for pole to avoid confusion with noise
 
-% First implement PI controller
+% Now implement PI controller
 % D_PI = Kp*(s + z_c) / s
 % Use I controller to reject disturbances (closed loop becomes type 2)
 % Use P controller to place in performance envelope
@@ -121,6 +121,8 @@ plot([-1, 0, -1]*x_theta, [1, 0, -1]*max(ylim), '--');
 ki_dtheta = kp_dtheta*z_c;
 
 % PID controller for dtheta
+figure;
+
 % Manual root locus plot of closed loop system with PID controller
 syms kd_dtheta
 D_dtheta = @(kd_dtheta) kp_dtheta + ki_dtheta*(1/s) + kd_dtheta*s;
@@ -128,23 +130,76 @@ G_dtheta_cl = @(kd_dtheta) D_dtheta(kd_dtheta)*G_dtheta/(1 + D_dtheta(kd_dtheta)
 % ???? Maybe use 3d plot to see effect of k
 figure;
 hold on;
-for kd_dtheta = 0:0.01:2
+for kd_dtheta = 0:0.01:1
     poles = pole(sym2tf(G_dtheta_cl(kd_dtheta)));
     plot(real(poles), imag(poles), 'k.'); % Plot pole of current k
 end
 
 % Starting poles
 poles = pole(sym2tf(G_dtheta_cl(0)));
-plot(real(poles), imag(poles), 'rx'); % Plot pole of current k
+plot(real(poles), imag(poles), 'bx'); % Plot pole of current k
 
-hold off
-stop
+% Plot requirement limits
+plot([1, 1]*sigma_p, ylim, '--'); % Settling time requirement limit
+x_theta = max(ylim)/tan(theta); % x to plot theta line
+plot([-1, 0, -1]*x_theta, [1, 0, -1]*max(ylim), '--');
+
+%% Current poles
+% Choose kd to place poles within desired region
+kd_dtheta = 0.02;
+poles = pole(sym2tf(G_dtheta_cl(kd_dtheta)));
+plot(real(poles), imag(poles), 'rx', 'MarkerSize', 10); % Plot pole of current k
+
+%%-------------------------------------------------------------
+%% Angle controller
+%%-------------------------------------------------------------
 % TF from dtehta_sp to theta (seen by angular rate controller)
-theta = (1/s)*dtheta;
+% theta = (1/s)*dtheta;
 % dtheta = G_dtheta_cl*theta_sp;
 G_theta = G_dtheta_cl*(1/s);
 
-% Transfer function with theta P controller 
+%% Design requirements:
+
+% Zero steady-state error
+% overshoot = %
+% bandwidth = rad/s
+% 2% settling time = s
+
+PO = 4.2; % Percentage Overshoot (%)
+wb = 10; % Desired dandwidth (rad/s)
+ts = 0.6; % 2% settling time (s)
+
+%% Calculate Kp needed for desired bandwidth
+kp_dtheta = 1; % Let feedback gain be 1
+[mag,phase,wout] = bode(sym2tf(kp_dtheta*G_dtheta/(1 + kp_dtheta*G_dtheta)), wb);
+K_dB = 20*log10(1/sqrt(2)) - 20*log10(mag); % How much gain in dB must be added to reach -3dB at wb
+kp_dtheta = 10^(K_dB/20); % Gain needed for desired bandwidth
+
+%% Bode of closed loop plant with Kp
+figure;
+bode(sym2tf(kp_dtheta*G_dtheta/(1 + kp_dtheta*G_dtheta)));
+title('Closed-loop with Kp for desired bandwidth: delta_E to dtheta. ');
+grid on;
+
+%% Draw root locus of plant with proportional controller
+figure;
+rlocus(sym2tf(G_dtheta));
+title('Root locus with P controller varied by kp')
+hold on;
+
+%% Plot current poles for kp needed for bandwidth
+current_pole = rlocus(sym2tf(kp_dtheta*G_dtheta), kp_dtheta);
+plot(real(current_pole), imag(current_pole), 'rx', 'Markersize', 10); % Plot current pole locatiosn
+hold off;
+
+% Percentage overshoot:
+zeta = sqrt( (log(PO/100))^2 / (pi^2 + (log(PO/100))^2) );  % Damping ratio
+theta = atan(sqrt(1 - zeta^2) / zeta); % Max angle from real axis to dominant pole
+
+% Settling time:
+sigma_p = log(0.02)/ts; % Real part limit of dominant pole, p for pole to avoid confusion with noise
+
+% Transfer function with theta and P controller 
 D_theta = kp_theta;
 G_theta_cl = D_theta*G_theta/(1 + D_theta*G_theta); % Closed loop tf with PID control for theta
 
