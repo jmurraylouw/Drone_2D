@@ -4,7 +4,7 @@ close all
 % G_Omega_y = (2*r/(tau*I_yy))/(s + (s + 1/tau)); % Omega_y/delta_E_r(s). Transfer function from elevator reference to angular rate
 
 % syms s % Laplace variable
-% syms delta_E
+syms delta_E
 % syms I_yy % Moment of inertia of drone body about body x axis (kg.m^3)
 % syms tau % Time constant for motors (s)
 % syms r % Distance from COM to rotor thrust (m)
@@ -49,9 +49,6 @@ dtheta = (1/s)*ddtheta; % Angular velocity is integral of Angular accelration
 % Transfer function from delta_E to dtheta
 G_dtheta = dtheta/delta_E;
 
-% Substitute paramater values
-G_dtheta = subs(G_dtheta);
-
 % Design requirements:
 
 % Reject disturbances
@@ -72,18 +69,19 @@ kp_dtheta = 10^(K_dB/20); % Gain needed for desired bandwidth
 
 % Bode of closed loop plant with Kp
 figure;
-bode(sym2tf(kp_dtheta*G_dtheta/(1 + kp_dtheta*G_dtheta)));
+tf_cl = kp_dtheta*G_dtheta/(1 + kp_dtheta*G_dtheta); % Closed loop transfer function
+bode(tf_cl);
 title('Closed-loop with Kp for desired bandwidth: delta_E to dtheta. ');
 grid on;
 
 % Draw root locus of plant with proportional controller
 figure;
-rlocus(sym2tf(G_dtheta));
+rlocus(G_dtheta);
 title('Root locus with P controller varied by kp')
 hold on;
 
 % Plot current poles for kp needed for bandwidth
-current_pole = rlocus(sym2tf(D_pi*G_dtheta), kp_dtheta);
+current_pole = rlocus(D_pi*G_dtheta, kp_dtheta);
 plot(real(current_pole), imag(current_pole), 'rx', 'Markersize', 10); % Plot current pole locatiosn
 hold off;
 
@@ -105,12 +103,12 @@ D_pi = (s + z_c) / s; % transfer function of Pi controller without kp
 
 % Draw root locus
 figure;
-rlocus(sym2tf(D_pi*G_dtheta));
+rlocus(D_pi*G_dtheta);
 title('Root locus with PI controller varied by kp')
 hold on;
 
 % Plot current poles for kp needed for bandwidth
-current_pole = rlocus(sym2tf(D_pi*G_dtheta), kp_dtheta);
+current_pole = rlocus(D_pi*G_dtheta, kp_dtheta);
 plot(real(current_pole), imag(current_pole), 'rx', 'Markersize', 10); % Plot current pole locatiosn
 ylim([min(imag(current_pole)), max(imag(current_pole))]*1.2); % adjust ylim to include plotted poles
 
@@ -125,7 +123,7 @@ ki_dtheta = kp_dtheta*z_c;
 % Transfer function of dtheta PID controller 
 D_dtheta = kp_dtheta + ki_dtheta*(1/s) + kd_dtheta*s;
 G_dtheta_cl = D_dtheta*G_dtheta/(1 + D_dtheta*G_dtheta); % Closed loop tf with PID control for dtheta
-pzmap()
+pzmap(G_dtheta_cl)
 
 % TF from dtehta_sp to theta (seen by angular rate controller)
 theta = (1/s)*dtheta;
