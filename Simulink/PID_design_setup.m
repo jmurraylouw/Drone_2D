@@ -3,15 +3,15 @@ close all
 % s = tf('s'); % transfer function variable
 % G_Omega_y = (2*r/(tau*I_yy))/(s + (s + 1/tau)); % Omega_y/delta_E_r(s). Transfer function from elevator reference to angular rate
 
-% syms s % Laplace variable
-% syms delta_E
-% syms I_yy % Moment of inertia of drone body about body x axis (kg.m^3)
-% syms tau % Time constant for motors (s)
-% syms r % Distance from COM to rotor thrust (m)
-% syms theta_sp % Pitch set-point (rad)
-% syms dx M F_x C_x_lin
-% syms g
-% syms F_x_r
+syms s % Laplace variable
+syms delta_E
+syms I_yy % Moment of inertia of drone body about body x axis (kg.m^3)
+syms tau % Time constant for motors (s)
+syms r % Distance from COM to rotor thrust (m)
+syms theta_sp % Pitch set-point (rad)
+syms dx M F_x C_x_lin
+syms g
+syms F_x_r
 
 % Model parameters
 M = 4.5; % Mass of drone body (at fulcrum)
@@ -24,8 +24,6 @@ rho = 1.225; % Air density (kg/m^3)
 tau = 0.07; % Motor time constant
 dx_bar = 5; % Average x velocity to linearise (m/s)
 C_x_lin = C_Dx*dx_bar; % Drag coef of linearised drag with average velocity
-
-s = tf('s'); % Laplace varaible
 
 % Motor mixing algorithm
 T1_r = -delta_E; % Thrust reference 1
@@ -83,7 +81,7 @@ title('Root locus with P controller varied by kp')
 hold on;
 
 % Plot current poles for kp needed for bandwidth
-current_pole = rlocus(sym2tf(D_pi*G_dtheta), kp_dtheta);
+current_pole = rlocus(sym2tf(kp_dtheta*G_dtheta), kp_dtheta);
 plot(real(current_pole), imag(current_pole), 'rx', 'Markersize', 10); % Plot current pole locatiosn
 hold off;
 
