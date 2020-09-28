@@ -20,11 +20,11 @@ M = 4.5; % Mass of drone body (at fulcrum)
 I_yy = 0.235; % Moment of inertia of drone body about body x axis
 r = 0.49*1/sqrt(2); % Distance from each rotor force to COM of drone
 g = -9.81; % Acceleration due to gravity (always negative)
-C_Dx = 0.2 ;% Damping coef. of drone through air in x direction (f = C_Dx*xdot)
+C_Dx = 0.2;% Damping coef. of drone through air in x direction (f = C_Dx*xdot)
 C_Dz = 0.2; % Damping coef. of drone in z direction (f = cy*zdot)
 rho = 1.225; % Air density (kg/m^3)
 tau = 0.07; % Motor time constant
-dx_bar = 5; % Average x velocity to linearise (m/s)
+dx_bar = 1; % Average x velocity to linearise at (m/s)
 C_x_lin = C_Dx*dx_bar; % Drag coef of linearised drag with average velocity
 
 % Motor mixing algorithm
@@ -69,10 +69,10 @@ wb_tol = 0.001; % tolerance on bandwidth frequency
 kp_dtheta = kp_for_bandwidth(G_dtheta,wb,wb_tol,kp_min,kp_max)
 
 %% Bode of closed loop plant with Kp
-figure;
-bode(sys);
-title('Closed-loop with Kp for desired bandwidth: delta_E to dtheta. ');
-grid on;
+% figure;
+% bode(sys);
+% title('Closed-loop with Kp for desired bandwidth: delta_E to dtheta. ');
+% grid on;
 
 %% Draw root locus of plant with proportional controller
 figure;
@@ -87,7 +87,7 @@ hold off;
 
 % Percentage overshoot:
 zeta = sqrt( (log(PO/100))^2 / (pi^2 + (log(PO/100))^2) );  % Damping ratio
-theta = atan(sqrt(1 - zeta^2) / zeta); % Max angle from real axis to dominant pole
+theta_pole = atan(sqrt(1 - zeta^2) / zeta); % Max angle from real axis to dominant pole
 
 % Settling time:
 sigma_p = log(0.02)/ts; % Real part limit of dominant pole, p for pole to avoid confusion with noise
@@ -114,7 +114,7 @@ ylim([min(imag(current_pole)), max(imag(current_pole))]*1.2); % adjust ylim to i
 
 % Plot requirement limits
 plot([1, 1]*sigma_p, ylim, '--'); % Settling time requirement limit
-x_theta = max(ylim)/tan(theta); % x to plot theta line
+x_theta = max(ylim)/tan(theta_pole); % x to plot theta line
 plot([-1, 0, -1]*x_theta, [1, 0, -1]*max(ylim), '--');
 
 % Calculate ki from z_c and kp
@@ -142,7 +142,7 @@ plot(real(poles), imag(poles), 'bx'); % Plot pole of current k
 
 % Plot requirement limits
 plot([1, 1]*sigma_p, ylim, '--'); % Settling time requirement limit
-x_theta = max(ylim)/tan(theta); % x to plot theta line
+x_theta = max(ylim)/tan(theta_pole); % x to plot theta line
 plot([-1, 0, -1]*x_theta, [1, 0, -1]*max(ylim), '--');
 grid on;
 
@@ -184,6 +184,7 @@ kp_theta = kp_for_bandwidth(G_theta,wb,wb_tol,kp_min,kp_max);
 %% Transfer function with theta and P controller 
 D_theta = kp_theta;
 G_theta_cl = D_theta*G_theta/(1 + D_theta*G_theta); % Closed loop tf with PID control for theta
+% G_theta_cl = theta/theta_sp
 
 %% Bode of closed loop plant with Kp
 figure;
@@ -209,7 +210,7 @@ plot([1, 1]*sigma_p, ylim, '--'); % Settling time requirement limit
 
 description = 'PID gain values from PID_design_setup.m for drone 2D';
 save('Data/Drone_2D_control_params.mat', 'description', 'kp_dtheta', 'ki_dtheta', 'kd_dtheta', 'kp_theta')
-stop
+
 %% F_x_r to theta_sp
 % F_x_r = -delta_T*sin(theta_sp)
 % Small angle approx: sin(theta_sp) == theta_sp
@@ -220,32 +221,34 @@ stop
 % Therefore: F_z = -delta_T
 % Linearise condition: F_z = Mg
 delta_T = -M*g;
+syms theta_sp F_x_r
 eqn = (F_x_r == -delta_T*(theta_sp));
 theta_sp = solve(eqn, theta_sp);
-G_theta_sp = theta_sp/F_x_r
+G_F_x_r = theta_sp/F_x_r;
 
 %% theta to dx
 % F_x = -delta_T*sin(theta)
 % Small angle approx: sin(theta_sp) == theta_sp
-F_x = -delta_T*(theta);
-eqn = (F_x - C_x_lin*dx == s*M*dx); % Equation of Newton 2nd law in x direction
+syms theta
+F_x = -2*delta_T*(theta);
+eqn = (F_x - C_x_lin*rho*dx == s*M*dx); % Equation of Newton 2nd law in x direction
 dx = solve(eqn, dx); % Solve for dx according to F_x from Newton 2nd law
 G_th_dx = dx/theta; % TF from theta to dx
 
 %% F_x_r to dx
-G_dx = G_theta_sp*G_theta_cl*G_th_dx;
+G_dx = G_F_x_r*G_theta_cl*G_th_dx; % dx/F_xr
 
-% Model parameters
-M = 4.5; % Mass of drone body (at fulcrum)
-I_yy = 0.235; % Moment of inertia of drone body about body x axis
-r = 0.49*1/sqrt(2); % Distance from each rotor force to COM of drone
-g = -9.81; % Acceleration due to gravity (always negative)
-C_Dx = 0.2 ;% Damping coef. of drone through air in x direction (f = C_Dx*xdot)
-C_Dz = 0.2; % Damping coef. of drone in z direction (f = cy*zdot)
-rho = 1.225; % Air density (kg/m^3)
-tau = 0.07; % Motor time constant
-dx_bar = 5; % Average x velocity to linearise (m/s)
-C_x_lin = C_Dx*dx_bar; % Drag coef of linearised drag with average velocity
+% % Model parameters
+% M = 4.5; % Mass of drone body (at fulcrum)
+% I_yy = 0.235; % Moment of inertia of drone body about body x axis
+% r = 0.49*1/sqrt(2); % Distance from each rotor force to COM of drone
+% g = -9.81; % Acceleration due to gravity (always negative)
+% C_Dx = 0.2 ;% Damping coef. of drone through air in x direction (f = C_Dx*xdot)
+% C_Dz = 0.2; % Damping coef. of drone in z direction (f = cy*zdot)
+% rho = 1.225; % Air density (kg/m^3)
+% tau = 0.07; % Motor time constant
+% dx_bar = 5; % Average x velocity to linearise (m/s)
+% C_x_lin = C_Dx*dx_bar; % Drag coef of linearised drag with average velocity
 
 % Substitute paramater values
 G_dtheta = subs(G_dtheta);
@@ -255,7 +258,7 @@ G_dx = subs(G_dx);
 G_dtheta = sym2tf(G_dtheta)
 G_dx = sym2tf(subs(G_dx));
 G_th_dx = sym2tf(subs(G_th_dx))
-
+% G_F_x_r = sym2tf(subs(G_F_x_r))
 % %% Display values from angular rate controller design
 % D_Omega_y.Kp
 % D_Omega_y.Ki
