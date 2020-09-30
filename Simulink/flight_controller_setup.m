@@ -40,4 +40,4 @@ tau = 0.07; % Motor time constant
 
 % Mixing Matrix.
 MM = [-1, 1;
-       1, 1]; % [F1; F2] = MM*[delta_E; delta_T]
+       1, 1]; % [T1; T2] = MM*[delta_E; delta_T]

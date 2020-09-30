@@ -24,6 +24,7 @@ C_Dz = 0.2; % Damping coef. of drone in z direction (f = cy*zdot)
 rho = 1.225; % Air density (kg/m^3)
 tau = 0.07; % Motor time constant
 dx_bar = 1; % Average x velocity to linearise at (m/s)
+dz_bar = 1; % Average z velocity to linearise at (m/s)
 
 % Motor mixing algorithm
 T1_r = -delta_E; % Thrust reference 1
@@ -432,10 +433,224 @@ x_performance.slow_factor = slow_factor;
 x_performance
 
 
-%% Convert sym to tf objects
-G_dtheta_tf = sym2tf(G_dtheta);
-G_th_dx = sym2tf(subs(G_th_dx));
-G_dx_tf = sym2tf(subs(G_dx));
+%%-------------------------------------------------------------
+%% Z Velocity controller
+%%-------------------------------------------------------------
+
+%% Design requirements:
+
+% Reject disturbances
+% Zero steady-state error
+PO = 12; % Percentage Overshoot (%)
+% ??? correct other controllers to use performance struct for wb_inner
+wb_inner = theta_performance.Bandwidth;
+wb = 3.5; % Desired dandwidth (rad/s). Slower than previous wb by a factor
+slow_factor = wb_inner/wb; % Factor that outer controller is slower than inner controller
+ts = 11.6; % 2% settling time (s)
+
+% Plant Transfer Function
+
+% Linearise at: theta_sp = 0 -> theta = delta_E = 0
+
+% F_z_r to delta_T:
+% ------------------
+% delta_T = -F_z_r/cos(theta);
+% Small angle approx: cos(theta) == 1
+% Therefore: F_z = -delta_T
+
+syms F_z_r
+delta_T = -F_z_r;
+
+% delta_T to dz:
+% ------------
+% [T1; T2] = MM*[delta_E; delta_T]
+% MM = [-1, 1;
+%        1, 1];
+% delta_E = 0
+% Therefore: T1 = delta_T, T2 = delta_T
+T1_r = delta_T; % Thrust reference 1
+T2_r = delta_T; % Thrust reference 2
+
+% Motor model
+G_motor = (1/tau)/(s + 1/tau);
+T1 = T1_r*G_motor; % Actual thrust
+T2 = T2_r*G_motor;
+
+% theta = 0, therefore F_z = sum of motor thrusts
+F_z = - T1 - T2; % Applied force in z direction. Z is down, but T1,T2 positive up
+
+syms dz
+C_z_lin = C_Dz*dz_bar; % Linearised drag coef. at average velocity dz_bar
+
+% Linearise at hover, therefore ignore gravity
+eqn = (F_z - C_z_lin*rho*dz == s*M*dz); % Newton 2nd law in z direction
+dz = solve(eqn, dz); % Solve for dz in terms of F_z_r
+G_dz = dz/F_z_r; % TF from F_z_r to dz
+G_dz_tf = sym2tf(G_dz);
+
+% PI controller for dz:
+
+% Percentage overshoot:
+zeta = sqrt( (log(PO/100))^2 / (pi^2 + (log(PO/100))^2) );  % Damping ratio
+theta_pole = atan(sqrt(1 - zeta^2) / zeta); % Max angle from real axis to dominant pole
+
+% Settling time:
+sigma_p = log(0.02)/ts; % Real part limit of dominant pole, p for pole to avoid confusion with noise
+
+% Now implement PI controller
+% D_PI = Kp*(s + z_c) / s
+% Use I controller to reject disturbances (closed loop becomes type 2)
+% Use P controller to place in performance envelope
+
+% Pole of D_PI is at origin, so let zero be close to origin: z_c = 0.1
+z_c = 1.5; % z_c = ki/kp
+D_pi = (s + z_c) / s; % transfer function of Pi controller without kp
+
+% Place kp for bandwidth
+kp_min = 0.001;
+kp_max = 30;
+wb_tol = 0.001; % tolerance on bandwidth frequency
+kp_dz = kp_for_bandwidth(D_pi*G_dz,wb,wb_tol,kp_min,kp_max);
+
+% Calculate ki from z_c and kp
+ki_dz = kp_dz*z_c;
+D_pi = kp_dz + ki_dz*(1/s); % PI controller TF
+
+% Root locus of plant with PI controller
+figure;
+rlocus(sym2tf(D_pi*G_dz));
+title('G(dz) with PI controller root locus varied by kp')
+hold on;
+
+% Plot current poles for kp needed for bandwidth
+current_pole = rlocus(sym2tf(D_pi*G_dz), kp_dz);
+plot(real(current_pole), imag(current_pole), 'rs', 'Markersize', 7); % Plot current pole locatiosn
+
+% Plot requirement limits
+plot([1, 1]*sigma_p, ylim, '--'); % Settling time requirement limit
+x_theta = max(ylim)/tan(theta_pole); % x to plot theta line
+plot([-1, 0, -1]*x_theta, [1, 0, -1]*max(ylim), '--');
+
+% PID controller for dz:
+
+% ???? Low pass filter (need to decide how to pick filter value
+N_dz = wb*2; % Frequency of Low Pas Filter (Manually tune)
+
+% Manual root locus plot of closed loop system with PID controller
+syms kd_dz
+% D_pid = @(kd_dz) kp_dz + ki_dz*(1/s) + kd_dz*s; % Without LPF
+D_pid = @(kd_dz) kp_dz + ki_dz*(1/s) + kd_dz*(N_dz/(1 + N_dz/s)); % Controller TF including low pass filter
+G_dz_cl = @(kd_dz) D_pid(kd_dz)*G_dz/(1 + D_pid(kd_dz)*G_dz); % Closed loop tf with P control for dtheta
+
+figure;
+title('G(dz) with PID controller root locus varied by kp')
+hold on;
+for kd_dz = 0:0.05:1.1
+    poles = pole(sym2tf(G_dz_cl(kd_dz)));
+    plot3(real(poles), imag(poles), kd_dz*(real(poles)./real(poles)), 'k.'); % Plot pole of current k
+end
+
+% Starting poles
+poles = pole(sym2tf(G_dz_cl(0)));
+plot(real(poles), imag(poles), 'bx'); % Plot pole of current k
+
+% Plot requirement limits
+plot([1, 1]*sigma_p, ylim, '--'); % Settling time requirement limit
+x_theta = max(ylim)/tan(theta_pole); % x to plot theta line
+plot([-1, 0, -1]*x_theta, [1, 0, -1]*max(ylim), '--');
+
+% Choose kd to place poles within desired region
+kd_dz = 0; % Manually adjust
+
+% Insert final parameter into TFs
+D_pid = D_pid(kd_dz);
+G_dz_cl = G_dz_cl(kd_dz);
+
+% Current poles:
+poles = pole(sym2tf(G_dz_cl));
+plot3(real(poles), imag(poles), kd_dz*(real(poles)./real(poles)), 'rs', 'MarkerSize', 7); % Plot pole of current k
+
+% Step responce
+t_dist = 10;
+controller_step_responce(G_dz, [D_pid, D_pi, kp_dz], {'PID', 'PI', 'P'}, t_dist)
+title('Step responce of dz controllers')
+
+% Performance parameters
+sys = sym2tf(G_dz_cl);
+dz_performance = stepinfo(sys);
+wb = bandwidth(sys);
+dz_performance.Bandwidth = wb;
+dz_performance.slow_factor = slow_factor;
+dz_performance
+
+
+%%-------------------------------------------------------------
+%% Z Position controller
+%%-------------------------------------------------------------
+
+%% Design requirements:
+% Zero steady-state error
+% Overdamped
+% Timescale seperation from inner loop
+
+PO = 0; % Percentage Overshoot (%)
+wb_inner = dz_performance.Bandwidth;
+wb = 1; % Desired dandwidth (rad/s).
+slow_factor = wb_inner/wb; % Factor that outer controller is slower than inner controller
+ts = 11.51; % 2% settling time (s)
+
+%% Plant Transfer Function
+% TF from z_sp to z (seen by position controller)
+% z = (1/s)*dz;
+% dz = G_dz_cl*z_sp;
+G_z = simplifyFraction(G_dz_cl*(1/s));
+G_z_tf = sym2tf(G_z);
+
+% Calculate Kp needed for desired bandwidth (Binary search)
+wb_tol = 0.001;
+kp_min = 0.001;
+kp_max = 10;
+kp_z = kp_for_bandwidth(G_z,wb,wb_tol,kp_min,kp_max);
+
+% Transfer function inclucding P controller
+D_p = kp_z;
+G_z_cl = D_p*G_z/(1 + D_p*G_z); % Closed loop tf with PID control for z
+% G_z_cl = z/z_sp
+
+% % Bode of closed loop plant with Kp
+% figure;
+% bode(sym2tf(G_theta_cl));
+% title('G(theta) closed-loop with Kp for desired bandwidth');
+% grid on;
+
+% Root locus of plant with P controller
+figure;
+rlocus(sym2tf(G_z));
+title('G(z) with P controller root locus varied by kp')
+hold on;
+
+% Plot current poles for kp needed for bandwidth
+current_pole = rlocus(sym2tf(kp_z*G_z), kp_z);
+plot(real(current_pole), imag(current_pole), 'rs', 'Markersize', 7); % Plot current pole locatiosn
+
+% Settling time:
+sigma_p = log(0.02)/ts; % Real part limit of dominant pole, p for pole to avoid confusion with noise
+
+% Plot requirement limits
+plot([1, 1]*sigma_p, ylim, '--'); % Settling time requirement limit
+
+% Step responce
+t_dist = 10;
+controller_step_responce(G_z, D_p, {'P'}, t_dist)
+title('Step responce of z controller')
+
+% Performance parameters
+sys = sym2tf(G_z_cl);
+z_performance = stepinfo(sys);
+wb = bandwidth(sys);
+z_performance.Bandwidth = wb;
+z_performance.slow_factor = slow_factor;
+z_performance
 
 %% Save gain values
 description = 'PID gain values from PID_design_setup.m for drone 2D';
