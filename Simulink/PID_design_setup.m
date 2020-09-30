@@ -142,9 +142,10 @@ grid on;
 % Choose kd to place poles within desired region
 kd_dtheta = 0.095;
 D_pid = D_pid(kd_dtheta);
+G_dtheta_cl = G_dtheta_cl(kd_dtheta);
 
 % Current poles
-poles = pole(sym2tf(G_dtheta_cl(kd_dtheta)));
+poles = pole(sym2tf(G_dtheta_cl));
 plot(real(poles), imag(poles), 'rs', 'MarkerSize', 7); % Plot pole of current k
 
 % Step responce
@@ -153,7 +154,6 @@ controller_step_responce(G_dtheta, [D_pid, D_pi, kp_dtheta], {'PID', 'PI', 'P'},
 title('Step responce of dtheta controllers')
 
 % Performance parameters
-G_dtheta_cl = subs(G_dtheta_cl(kd_dtheta)); % Convert type to symbolic, not anonymous function
 sys = sym2tf(G_dtheta_cl);
 dtheta_performance = stepinfo(sys);
 wb = bandwidth(sys);
@@ -228,7 +228,7 @@ theta_performance.slow_factor = slow_factor;
 theta_performance
 
 %%-------------------------------------------------------------
-%% Velocity controller
+%% X Velocity controller
 %%-------------------------------------------------------------
 
 %% Design requirements:
@@ -329,8 +329,8 @@ syms kd_dx
 D_pid = @(kd_dx) kp_dx + ki_dx*(1/s) + kd_dx*(N_dx/(1 + N_dx/s)); % Controller TF including low pass filter
 G_dx_cl = @(kd_dx) D_pid(kd_dx)*G_dx/(1 + D_pid(kd_dx)*G_dx); % Closed loop tf with P control for dtheta
 
-% figure;
-% hold on;
+figure;
+hold on;
 % for kd_dx = 0:0.01:2
 %     poles = pole(sym2tf(G_dx_cl(kd_dx)));
 %     plot3(real(poles), imag(poles), kd_dx*(real(poles)./real(poles)), 'k.'); % Plot pole of current k
@@ -345,11 +345,15 @@ plot([1, 1]*sigma_p, ylim, '--'); % Settling time requirement limit
 x_theta = max(ylim)/tan(theta_pole); % x to plot theta line
 plot([-1, 0, -1]*x_theta, [1, 0, -1]*max(ylim), '--');
 
-% Current poles:
 % Choose kd to place poles within desired region
 kd_dx = 0.01; % Manually adjust
+
+% Insert final parameter into TFs
 D_pid = D_pid(kd_dx);
-poles = pole(sym2tf(G_dx_cl(kd_dx)));
+G_dx_cl = G_dx_cl(kd_dx);
+
+% Current poles:
+poles = pole(sym2tf(G_dx_cl));
 plot(real(poles), imag(poles), 'rs', 'MarkerSize', 7); % Plot pole of current k
 
 % Step responce
@@ -358,13 +362,82 @@ controller_step_responce(G_dx, [D_pid, D_pi, kp_dx], {'PID', 'PI', 'P'}, t_dist)
 title('Step responce of dx controllers')
 
 % Performance parameters
-G_dx_cl = subs(G_dx_cl(kd_dx)); % Convert type to symbolic, not anonymous function
 sys = sym2tf(G_dx_cl);
 dx_performance = stepinfo(sys);
 wb = bandwidth(sys);
 dx_performance.Bandwidth = wb;
 dx_performance.slow_factor = slow_factor;
 dx_performance
+
+
+%%-------------------------------------------------------------
+%% X Position controller
+%%-------------------------------------------------------------
+
+%% Design requirements:
+% Zero steady-state error
+% Overdamped
+% Timescale seperation from inner loop
+
+PO = 0; % Percentage Overshoot (%)
+wb_inner = dx_performance.Bandwidth;
+wb = 0.59; % Desired dandwidth (rad/s).
+slow_factor = wb_inner/wb; % Factor that outer controller is slower than inner controller
+ts = 11.51; % 2% settling time (s)
+
+%% Plant Transfer Function
+% TF from x_sp to x (seen by position controller)
+% x = (1/s)*dx;
+% dx = G_dx_cl*x_sp;
+G_x = simplifyFraction(G_dx_cl*(1/s));
+G_x_tf = sym2tf(G_x);
+
+% Calculate Kp needed for desired bandwidth (Binary search)
+wb_tol = 0.001;
+kp_min = 0.001;
+kp_max = 10;
+kp_x = kp_for_bandwidth(G_x,wb,wb_tol,kp_min,kp_max);
+
+% Transfer function inclucding P controller
+D_p = kp_x;
+G_x_cl = D_p*G_x/(1 + D_p*G_x); % Closed loop tf with PID control for x
+% G_x_cl = x/x_sp
+
+% % Bode of closed loop plant with Kp
+% figure;
+% bode(sym2tf(G_theta_cl));
+% title('G(theta) closed-loop with Kp for desired bandwidth');
+% grid on;
+
+% Root locus of plant with P controller
+figure;
+rlocus(sym2tf(G_x));
+title('G(x) with P controller root locus varied by kp')
+hold on;
+
+% Plot current poles for kp needed for bandwidth
+current_pole = rlocus(sym2tf(kp_x*G_x), kp_x);
+plot(real(current_pole), imag(current_pole), 'rs', 'Markersize', 7); % Plot current pole locatiosn
+
+% Settling time:
+sigma_p = log(0.02)/ts; % Real part limit of dominant pole, p for pole to avoid confusion with noise
+
+% Plot requirement limits
+plot([1, 1]*sigma_p, ylim, '--'); % Settling time requirement limit
+
+% Step responce
+t_dist = 10;
+controller_step_responce(G_x, D_p, {'P'}, t_dist)
+title('Step responce of theta controllers')
+
+% Performance parameters
+sys = sym2tf(G_x_cl);
+x_performance = stepinfo(sys);
+wb = bandwidth(sys);
+x_performance.Bandwidth = wb;
+x_performance.slow_factor = slow_factor;
+x_performance
+
 
 %% Convert sym to tf objects
 % G_dtheta = sym2tf(G_dtheta);
