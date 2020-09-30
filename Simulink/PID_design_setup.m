@@ -107,8 +107,8 @@ plot([-1, 0, -1]*x_theta, [1, 0, -1]*max(ylim), '--');
 
 % Manual root locus plot of closed loop system with PID controller
 syms kd_dtheta
-D_dtheta = @(kd_dtheta) kp_dtheta + ki_dtheta*(1/s) + kd_dtheta*s;
-G_dtheta_cl = @(kd_dtheta) D_dtheta(kd_dtheta)*G_dtheta/(1 + D_dtheta(kd_dtheta)*G_dtheta); % Closed loop tf with P control for dtheta
+D_pid = @(kd_dtheta) kp_dtheta + ki_dtheta*(1/s) + kd_dtheta*s;
+G_dtheta_cl = @(kd_dtheta) D_pid(kd_dtheta)*G_dtheta/(1 + D_pid(kd_dtheta)*G_dtheta); % Closed loop tf with P control for dtheta
 
 figure;
 hold on;
@@ -198,6 +198,10 @@ plot([1, 1]*sigma_p, ylim, '--'); % Settling time requirement limit
 
 description = 'PID gain values from PID_design_setup.m for drone 2D';
 save('Data/Drone_2D_control_params.mat', 'description', 'kp_dtheta', 'ki_dtheta', 'kd_dtheta', 'kp_theta')
+
+% Step responce
+t_dist = 10;
+controller_step_responce(G_dx, D_pid, D_pi, D_p, t_dist)
 
 % Performance parameters
 sys = sym2tf(D_pid*G_dx/(1 + D_pid*G_dx));
@@ -357,24 +361,21 @@ plot(real(poles), imag(poles), 'rs', 'MarkerSize', 7); % Plot pole of current k
 % Low pass filter
 N_dx = 100; % Manually tune
 
-% Step responce
+%% Step responce
 t_dist = 10;
-controller_step_responce(G_dx, D_pid, D_pi, D_p, t_dist)
+controller_step_responce(G_dx, [D_pid, D_pi, D_p], {'PID', 'PI', 'P'}, t_dist)
 
 % Performance parameters
-sys = sym2tf(D_pid*G_dx/(1 + D_pid*G_dx));
+G_dx_cl = subs(G_dx_cl(kd_dx)); % Convert type to symbolic, not anonymous function
+sys = sym2tf(G_dx_cl);
 dx_performance = stepinfo(sys);
 wb = bandwidth(sys);
 dx_performance.Bandwidth = wb;
-
-%%
-G_dx_cl = simplifyFraction(subs(G_dx_cl(kd_dx))); % Convert type to symbolic, not anonymous function
 
 %% Convert sym to tf objects
 % G_dtheta = sym2tf(G_dtheta);
 % G_th_dx = sym2tf(subs(G_th_dx));
 % G_dx = sym2tf(subs(G_dx));
-
 
 function TF = sym2tf(sym_TF)
 % Converts symbolic representation of transfer function
@@ -417,10 +418,11 @@ function kp = kp_for_bandwidth(G,wb,wb_tol,kp_min,kp_max)
     
 end
 
-function controller_step_responce(G, D_pid, D_pi, D_p, t_dist)
+function controller_step_responce(G, D_array, Legend, t_dist)
 %% Step responce of P, Pi, and PID controllers with disturbance at t_dist
 % G = symbolic tf of plant
-% D_pid, D_pi, D_p = symbolic tf of controllers
+% D_array = Array of controllers to simulate (symbolic tf of controllers)
+% Legend = cell array of entries to use as legend
 % t_dist = Time of step disturbance (s)
     
 
@@ -434,19 +436,13 @@ function controller_step_responce(G, D_pid, D_pi, D_p, t_dist)
     hold on
     grid on
     
-    % P
-    sys = sym2tf(D_p*G/(1 + D_p*G));
-    lsim(sys,u,t)    
+    % Simulate controllers
+    for i = 1:length(D_array)
+        sys = sym2tf(D_array(i)*G/(1 + D_array(i)*G));
+        lsim(sys,u,t)    
+    end
     
-    % PI
-    sys = sym2tf(D_pi*G/(1 + D_pi*G));
-    lsim(sys,u,t)
-    
-    % PID
-    sys = sym2tf(D_pid*G/(1 + D_pid*G));
-    lsim(sys,u,t)
-    
-    legend('P', 'PI', 'PID')
+    legend(Legend)
 
 end
 
