@@ -49,6 +49,7 @@ dtheta = (1/s)*ddtheta; % Angular velocity is integral of Angular accelration
 %% Angular rate controller
 %%-------------------------------------------------------------
 
+%% Plant Transfer Function
 % Transfer function from delta_E to dtheta
 G_dtheta = dtheta/delta_E;
 G_dtheta = subs(G_dtheta); % Substitute paramater values
@@ -156,10 +157,6 @@ dtheta_performance.Bandwidth = wb;
 %%-------------------------------------------------------------
 %% Angle controller
 %%-------------------------------------------------------------
-% TF from dtehta_sp to theta (seen by angular rate controller)
-% theta = (1/s)*dtheta;
-% dtheta = G_dtheta_cl*theta_sp;
-G_theta = simplifyFraction(G_dtheta_cl*(1/s));
 
 %% Design requirements:
 % Zero steady-state error
@@ -170,24 +167,30 @@ PO = 0; % Percentage Overshoot (%)
 wb = 4.41; % Desired dandwidth (rad/s)
 ts = 1.95; % 2% settling time (s)
 
-%% Calculate Kp needed for desired bandwidth (Binary search)
+%% Plant Transfer Function
+% TF from dtehta_sp to theta (seen by angular rate controller)
+% theta = (1/s)*dtheta;
+% dtheta = G_dtheta_cl*theta_sp;
+G_theta = simplifyFraction(G_dtheta_cl*(1/s));
+
+% Calculate Kp needed for desired bandwidth (Binary search)
 wb_tol = 0.001;
 kp_min = 0.001;
 kp_max = 10;
 kp_theta = kp_for_bandwidth(G_theta,wb,wb_tol,kp_min,kp_max);
 
-%% Transfer function inclucding P controller
+% Transfer function inclucding P controller
 D_p = kp_theta;
 G_theta_cl = D_p*G_theta/(1 + D_p*G_theta); % Closed loop tf with PID control for theta
 % G_theta_cl = theta/theta_sp
 
-%% Bode of closed loop plant with Kp
+% Bode of closed loop plant with Kp
 figure;
 bode(sym2tf(G_theta_cl));
 title('G(theta) closed-loop with Kp for desired bandwidth');
 grid on;
 
-%% Draw root locus of plant with P controller
+% Root locus of plant with P controller
 figure;
 rlocus(sym2tf(G_theta));
 title('G(theta) with P controller root locus varied by kp')
