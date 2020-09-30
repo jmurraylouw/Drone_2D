@@ -53,6 +53,7 @@ dtheta = (1/s)*ddtheta; % Angular velocity is integral of Angular accelration
 % Transfer function from delta_E to dtheta
 G_dtheta = dtheta/delta_E;
 G_dtheta = subs(G_dtheta); % Substitute paramater values
+G_dtheta_tf = sym2tf(G_dtheta);
 
 %% Design requirements:
 
@@ -174,6 +175,7 @@ ts = 1.95; % 2% settling time (s)
 % theta = (1/s)*dtheta;
 % dtheta = G_dtheta_cl*theta_sp;
 G_theta = simplifyFraction(G_dtheta_cl*(1/s));
+G_theta_tf = sym2tf(G_theta);
 
 % Calculate Kp needed for desired bandwidth (Binary search)
 wb_tol = 0.001;
@@ -438,13 +440,13 @@ x_performance
 %%-------------------------------------------------------------
 
 %% Design requirements:
-
+close all
 % Reject disturbances
 % Zero steady-state error
 PO = 12; % Percentage Overshoot (%)
 % ??? correct other controllers to use performance struct for wb_inner
 wb_inner = theta_performance.Bandwidth;
-wb = 3.5; % Desired dandwidth (rad/s). Slower than previous wb by a factor
+wb = 2.9; % Desired dandwidth (rad/s). Slower than previous wb by a factor
 slow_factor = wb_inner/wb; % Factor that outer controller is slower than inner controller
 ts = 11.6; % 2% settling time (s)
 
@@ -454,12 +456,12 @@ ts = 11.6; % 2% settling time (s)
 
 % F_z_r to delta_T:
 % ------------------
-% delta_T = -F_z_r/cos(theta);
+% delta_T = -0.5*F_z_r/cos(theta);
 % Small angle approx: cos(theta) == 1
 % Therefore: F_z = -delta_T
 
 syms F_z_r
-delta_T = -F_z_r;
+delta_T = -0.5*F_z_r;
 
 % delta_T to dz:
 % ------------
@@ -503,7 +505,7 @@ sigma_p = log(0.02)/ts; % Real part limit of dominant pole, p for pole to avoid 
 % Use P controller to place in performance envelope
 
 % Pole of D_PI is at origin, so let zero be close to origin: z_c = 0.1
-z_c = 1.5; % z_c = ki/kp
+z_c = 1.4; % z_c = ki/kp
 D_pi = (s + z_c) / s; % transfer function of Pi controller without kp
 
 % Place kp for bandwidth
@@ -545,10 +547,10 @@ G_dz_cl = @(kd_dz) D_pid(kd_dz)*G_dz/(1 + D_pid(kd_dz)*G_dz); % Closed loop tf w
 figure;
 title('G(dz) with PID controller root locus varied by kp')
 hold on;
-for kd_dz = 0:0.05:1.1
-    poles = pole(sym2tf(G_dz_cl(kd_dz)));
-    plot3(real(poles), imag(poles), kd_dz*(real(poles)./real(poles)), 'k.'); % Plot pole of current k
-end
+% for kd_dz = 0:0.05:1.1
+%     poles = pole(sym2tf(G_dz_cl(kd_dz)));
+%     plot3(real(poles), imag(poles), kd_dz*(real(poles)./real(poles)), 'k.'); % Plot pole of current k
+% end
 
 % Starting poles
 poles = pole(sym2tf(G_dz_cl(0)));
@@ -564,7 +566,7 @@ kd_dz = 0; % Manually adjust
 
 % Insert final parameter into TFs
 D_pid = D_pid(kd_dz);
-G_dz_cl = G_dz_cl(kd_dz);
+G_dz_cl = simplifyFraction(G_dz_cl(kd_dz));
 
 % Current poles:
 poles = pole(sym2tf(G_dz_cl));
@@ -657,8 +659,10 @@ description = 'PID gain values from PID_design_setup.m for drone 2D';
 save('Data/Drone_2D_control_params.mat', 'description', ...
 'kp_dtheta', 'ki_dtheta', 'kd_dtheta', 'N_dtheta', ...
 'kp_theta', ...
-'kp_dx', 'ki_dx', 'kd_dx', 'N_dx',...
-'kp_x')
+'kp_dx', 'ki_dx', 'kd_dx', 'N_dx', ...
+'kp_x', ...
+'kp_dz', 'ki_dz', 'kd_dz', 'N_dz', ...
+'kp_z')
 
 
 function TF = sym2tf(sym_TF)
