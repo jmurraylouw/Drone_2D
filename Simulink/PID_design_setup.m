@@ -90,7 +90,7 @@ ki_dtheta = kp_dtheta*z_c;
 % Draw root locus
 figure;
 rlocus(sym2tf(D_pi*G_dtheta));
-title('G(dtheta) root locus with PI controller varied by kp')
+title('G(dtheta) with PI controller root locus varied by kp')
 hold on;
 
 % Plot current poles for kp needed for bandwidth
@@ -112,7 +112,7 @@ G_dtheta_cl = @(kd_dtheta) D_pid(kd_dtheta)*G_dtheta/(1 + D_pid(kd_dtheta)*G_dth
 
 figure;
 hold on;
-title('Root locus of plant with PID controller varied by kd');
+title('G(dtheta) with PID controller root locus varied by kd');
 
 % for kd_dtheta = 0:0.01:0.5
 %     poles = pole(sym2tf(G_dtheta_cl(kd_dtheta)));
@@ -129,14 +129,21 @@ x_theta = max(ylim)/tan(theta_pole); % x to plot theta line
 plot([-1, 0, -1]*x_theta, [1, 0, -1]*max(ylim), '--');
 grid on;
 
-% Current poles
 % Choose kd to place poles within desired region
 kd_dtheta = 0.08;
+D_pid = D_pid(kd_dtheta);
+
+% Current poles
 poles = pole(sym2tf(G_dtheta_cl(kd_dtheta)));
 plot(real(poles), imag(poles), 'rs', 'MarkerSize', 7); % Plot pole of current k
 
 % Low pass filter
 N_dtheta = 100;
+
+% Step responce
+t_dist = 10;
+controller_step_responce(G_dtheta, [D_pid, D_pi, kp_dtheta], {'PID', 'PI', 'P'}, t_dist)
+title('Step responce of dtheta controllers')
 
 % Performance parameters
 G_dtheta_cl = subs(G_dtheta_cl(kd_dtheta)); % Convert type to symbolic, not anonymous function
@@ -170,20 +177,20 @@ kp_max = 10;
 kp_theta = kp_for_bandwidth(G_theta,wb,wb_tol,kp_min,kp_max);
 
 %% Transfer function inclucding P controller
-D_theta = kp_theta;
-G_theta_cl = D_theta*G_theta/(1 + D_theta*G_theta); % Closed loop tf with PID control for theta
+D_p = kp_theta;
+G_theta_cl = D_p*G_theta/(1 + D_p*G_theta); % Closed loop tf with PID control for theta
 % G_theta_cl = theta/theta_sp
 
 %% Bode of closed loop plant with Kp
 figure;
 bode(sym2tf(G_theta_cl));
-title('Closed-loop with Kp for desired bandwidth: G(theta)');
+title('G(theta) closed-loop with Kp for desired bandwidth');
 grid on;
 
-%% Draw root locus of plant with proportional controller
+%% Draw root locus of plant with P controller
 figure;
 rlocus(sym2tf(G_theta));
-title('G(theta) with P controller varied by kp')
+title('G(theta) with P controller root locus varied by kp')
 hold on;
 
 % Plot current poles for kp needed for bandwidth
@@ -196,15 +203,13 @@ sigma_p = log(0.02)/ts; % Real part limit of dominant pole, p for pole to avoid 
 % Plot requirement limits
 plot([1, 1]*sigma_p, ylim, '--'); % Settling time requirement limit
 
-description = 'PID gain values from PID_design_setup.m for drone 2D';
-save('Data/Drone_2D_control_params.mat', 'description', 'kp_dtheta', 'ki_dtheta', 'kd_dtheta', 'kp_theta')
-
 % Step responce
 t_dist = 10;
-controller_step_responce(G_dx, D_pid, D_pi, D_p, t_dist)
+controller_step_responce(G_theta, D_p, {'P'}, t_dist)
+title('Step responce of theta controllers')
 
 % Performance parameters
-sys = sym2tf(D_pid*G_dx/(1 + D_pid*G_dx));
+sys = sym2tf(D_pid*G_theta/(1 + D_pid*G_theta));
 dx_performance = stepinfo(sys);
 wb = bandwidth(sys);
 dx_performance.Bandwidth = wb;
@@ -218,11 +223,14 @@ dx_performance.Bandwidth = wb;
 % Reject disturbances
 % Zero steady-state error
 PO = 12; % Percentage Overshoot (%)
-wb = wb/2; % Desired dandwidth (rad/s). Slower than previous wb by a factor
+wb = wb/2 % Desired dandwidth (rad/s). Slower than previous wb by a factor
 wb = 4.4
 ts = 11.6; % 2% settling time (s)
 
-%% F_x_r to theta_sp
+%% Plant Transfer Function
+
+% F_x_r to theta_sp:
+% ------------------
 % F_x_r = -delta_T*sin(theta_sp)
 % Small angle approx: sin(theta_sp) == theta_sp
 % Therefore: F_x_r = delta_T*(theta_sp)
@@ -238,6 +246,7 @@ theta_sp = solve(eqn, theta_sp);
 G_F_x_r = theta_sp/F_x_r;
 
 % theta to dx:
+% ------------
 % F_x = -delta_T*sin(theta)
 % Small angle approx: sin(theta_sp) == theta_sp
 syms theta dx
@@ -250,37 +259,6 @@ G_th_dx = dx/theta; % TF from theta to dx
 % F_x_r to dx:
 G_dx = G_F_x_r*G_theta_cl*G_th_dx; % dx/F_xr
 G_dx_tf = sym2tf(G_dx);
-
-%% P controller for dx:
-
-%% Calculate Kp needed for desired bandwidth
-kp_min = 0.001;
-kp_max = 30;
-wb_tol = 0.001; % tolerance on bandwidth frequency
-'P'
-kp_dx = kp_for_bandwidth(G_dx,wb,wb_tol,kp_min,kp_max)
-
-%% Transfer function including P controller
-D_p = kp_dx;
-% G_dx_cl = dx/dx_sp
-G_dx_cl = D_p*G_dx/(1 + D_p*G_dx); % Closed loop tf with P control for theta
-
-% Bode of closed loop plant with P controller
-figure;
-bode(sym2tf(G_dx_cl));
-title('Closed-loop with Kp for desired bandwidth: G_dx');
-grid on;
-
-%% Root locus of plant with P controller
-figure;
-rlocus(sym2tf(G_dx));
-title('G(dx) with P controller varied by kp')
-hold on;
-
-% Plot current poles for kp needed for bandwidth
-current_pole = rlocus(sym2tf(kp_dx*G_dx), kp_dx);
-plot(real(current_pole), imag(current_pole), 'rs', 'Markersize', 7); % Plot current pole locatiosn
-hold off;
 
 %% PI controller for dx:
 
@@ -301,7 +279,6 @@ z_c = 0.08; % z_c = ki/kp
 D_pi = (s + z_c) / s; % transfer function of Pi controller without kp
 
 % Place kp for bandwidth
-'PI'
 kp_min = 0.001;
 kp_max = 30;
 wb_tol = 0.001; % tolerance on bandwidth frequency
@@ -314,7 +291,7 @@ D_pi = kp_dx + ki_dx*(1/s); % PI controller TF
 % Root locus of plant with PI controller
 figure;
 rlocus(sym2tf(D_pi*G_dx));
-title('G(dx) with PI controller varied by kp')
+title('G(dx) with PI controller root locus varied by kp')
 hold on;
 
 % Plot current poles for kp needed for bandwidth
@@ -358,12 +335,13 @@ D_pid = D_pid(kd_dx);
 poles = pole(sym2tf(G_dx_cl(kd_dx)));
 plot(real(poles), imag(poles), 'rs', 'MarkerSize', 7); % Plot pole of current k
 
-% Low pass filter
+% ???? Low pass filter (need to decide how to pick filter value
 N_dx = 100; % Manually tune
 
-%% Step responce
+% Step responce
 t_dist = 10;
-controller_step_responce(G_dx, [D_pid, D_pi, D_p], {'PID', 'PI', 'P'}, t_dist)
+controller_step_responce(G_dx, [D_pid, D_pi, kp_dx], {'PID', 'PI', 'P'}, t_dist)
+title('Step responce of dx controllers')
 
 % Performance parameters
 G_dx_cl = subs(G_dx_cl(kd_dx)); % Convert type to symbolic, not anonymous function
@@ -376,6 +354,14 @@ dx_performance.Bandwidth = wb;
 % G_dtheta = sym2tf(G_dtheta);
 % G_th_dx = sym2tf(subs(G_th_dx));
 % G_dx = sym2tf(subs(G_dx));
+
+%% Save gain values
+description = 'PID gain values from PID_design_setup.m for drone 2D';
+save('Data/Drone_2D_control_params.mat', 'description', ...
+'kp_dtheta', 'ki_dtheta', 'kd_dtheta', ...
+'kp_theta', ...
+'kp_dx', 'ki_dx', 'kd_dx')
+
 
 function TF = sym2tf(sym_TF)
 % Converts symbolic representation of transfer function
