@@ -34,6 +34,7 @@ T2_r = delta_E; % Thrust reference 2
 G_motor = (1/tau)/(s + 1/tau);
 T1 = T1_r*G_motor; % Actual thrust
 T2 = T2_r*G_motor;
+motor_wb = bandwidth(sym2tf(G_motor));
 
 % Body moment
 M_By = -T1*r + T2*r; % Momement around y-axis
@@ -61,6 +62,7 @@ G_dtheta_tf = sym2tf(G_dtheta);
 % Zero steady-state error
 PO = 4.2; % Percentage Overshoot (%)
 wb_buffer = 1.9; % Add buffer because wb drops when kd and LPF is added
+wb_inner = motor_wb; % Inner control loop bandwidth is from motor controller (rad/s)
 wb = 12.52 + wb_buffer; % Desired dandwidth (rad/s)
 ts = 0.6; % 2% settling time (s)
 
@@ -153,6 +155,8 @@ sys = sym2tf(G_dtheta_cl);
 dtheta_performance = stepinfo(sys);
 wb = bandwidth(sys);
 dtheta_performance.Bandwidth = wb;
+slow_factor = wb_inner/wb; % Factor that outer controller is slower than inner controller
+dtheta_performance.slow_factor = slow_factor;
 dtheta_performance
 
 %%-------------------------------------------------------------
@@ -165,9 +169,8 @@ dtheta_performance
 % Timescale seperation from inner loop
 
 PO = 0; % Percentage Overshoot (%)
-wb_inner = wb;
+wb_inner = dtheta_performance.Bandwidth;
 wb = 4.41; % Desired dandwidth (rad/s).
-slow_factor = wb_inner/wb; % Factor that outer controller is slower than inner controller
 ts = 1.95; % 2% settling time (s)
 
 %% Plant Transfer Function
@@ -220,6 +223,7 @@ sys = sym2tf(D_p*G_theta/(1 + D_p*G_theta));
 theta_performance = stepinfo(sys);
 wb = bandwidth(sys);
 theta_performance.Bandwidth = wb;
+slow_factor = wb_inner/wb; % Factor that outer controller is slower than inner controller
 theta_performance.slow_factor = slow_factor;
 theta_performance
 
@@ -232,12 +236,11 @@ theta_performance
 % Reject disturbances
 % Zero steady-state error
 PO = 12; % Percentage Overshoot (%)
-wb_inner = wb;
+wb_inner = theta_performance.Bandwidth;
 wb = 2.166; % Desired dandwidth (rad/s). Slower than previous wb by a factor
-slow_factor = wb_inner/wb; % Factor that outer controller is slower than inner controller
 ts = 11.6; % 2% settling time (s)
 
-%% Plant Transfer Function
+% Plant Transfer Function:
 
 % F_x_r to theta_sp:
 % ------------------
@@ -270,7 +273,7 @@ G_th_dx = dx/theta; % TF from theta to dx
 G_dx = G_F_x_r*G_theta_cl*G_th_dx; % dx/F_xr
 G_dx_tf = sym2tf(G_dx);
 
-%% PI controller for dx:
+% PI controller for dx:
 
 % Percentage overshoot:
 zeta = sqrt( (log(PO/100))^2 / (pi^2 + (log(PO/100))^2) );  % Damping ratio
@@ -314,7 +317,7 @@ plot([1, 1]*sigma_p, ylim, '--'); % Settling time requirement limit
 x_theta = max(ylim)/tan(theta_pole); % x to plot theta line
 plot([-1, 0, -1]*x_theta, [1, 0, -1]*max(ylim), '--');
 
-%% PID controller for dx:
+% PID controller for dx:
 
 % ???? Low pass filter (need to decide how to pick filter value
 N_dx = wb*2; % Frequency of Low Pas Filter (Manually tune)
@@ -327,10 +330,10 @@ G_dx_cl = @(kd_dx) D_pid(kd_dx)*G_dx/(1 + D_pid(kd_dx)*G_dx); % Closed loop tf w
 
 figure;
 hold on;
-% for kd_dx = 0:0.01:2
-%     poles = pole(sym2tf(G_dx_cl(kd_dx)));
-%     plot3(real(poles), imag(poles), kd_dx*(real(poles)./real(poles)), 'k.'); % Plot pole of current k
-% end
+for kd_dx = 0:0.1:2
+    poles = pole(sym2tf(G_dx_cl(kd_dx)));
+    plot3(real(poles), imag(poles), kd_dx*(real(poles)./real(poles)), 'k.'); % Plot pole of current k
+end
 
 % Starting poles
 poles = pole(sym2tf(G_dx_cl(0)));
@@ -342,7 +345,7 @@ x_theta = max(ylim)/tan(theta_pole); % x to plot theta line
 plot([-1, 0, -1]*x_theta, [1, 0, -1]*max(ylim), '--');
 
 % Choose kd to place poles within desired region
-kd_dx = 0.01; % Manually adjust
+kd_dx = 0; % Manually adjust
 
 % Insert final parameter into TFs
 D_pid = D_pid(kd_dx);
@@ -350,7 +353,7 @@ G_dx_cl = G_dx_cl(kd_dx);
 
 % Current poles:
 poles = pole(sym2tf(G_dx_cl));
-plot(real(poles), imag(poles), 'rs', 'MarkerSize', 7); % Plot pole of current k
+plot3(real(poles), imag(poles), kd_dx*(real(poles)./real(poles)), 'rs', 'MarkerSize', 7); % Plot pole of current k
 
 % Step responce
 t_dist = 10;
@@ -362,6 +365,7 @@ sys = sym2tf(G_dx_cl);
 dx_performance = stepinfo(sys);
 wb = bandwidth(sys);
 dx_performance.Bandwidth = wb;
+slow_factor = wb_inner/wb; % Factor that outer controller is slower than inner controller
 dx_performance.slow_factor = slow_factor;
 dx_performance
 
@@ -378,7 +382,6 @@ dx_performance
 PO = 0; % Percentage Overshoot (%)
 wb_inner = dx_performance.Bandwidth;
 wb = 0.59; % Desired dandwidth (rad/s).
-slow_factor = wb_inner/wb; % Factor that outer controller is slower than inner controller
 ts = 11.51; % 2% settling time (s)
 
 %% Plant Transfer Function
@@ -431,6 +434,7 @@ sys = sym2tf(G_x_cl);
 x_performance = stepinfo(sys);
 wb = bandwidth(sys);
 x_performance.Bandwidth = wb;
+slow_factor = wb_inner/wb; % Factor that outer controller is slower than inner controller
 x_performance.slow_factor = slow_factor;
 x_performance
 
@@ -445,9 +449,8 @@ close all
 % Zero steady-state error
 PO = 12; % Percentage Overshoot (%)
 % ??? correct other controllers to use performance struct for wb_inner
-wb_inner = theta_performance.Bandwidth;
+wb_inner = motor_wb;
 wb = 2.9; % Desired dandwidth (rad/s). Slower than previous wb by a factor
-slow_factor = wb_inner/wb; % Factor that outer controller is slower than inner controller
 ts = 11.6; % 2% settling time (s)
 
 % Plant Transfer Function
@@ -582,6 +585,7 @@ sys = sym2tf(G_dz_cl);
 dz_performance = stepinfo(sys);
 wb = bandwidth(sys);
 dz_performance.Bandwidth = wb;
+slow_factor = wb_inner/wb; % Factor that outer controller is slower than inner controller
 dz_performance.slow_factor = slow_factor;
 dz_performance
 
@@ -598,10 +602,9 @@ dz_performance
 PO = 0; % Percentage Overshoot (%)
 wb_inner = dz_performance.Bandwidth;
 wb = 1; % Desired dandwidth (rad/s).
-slow_factor = wb_inner/wb; % Factor that outer controller is slower than inner controller
 ts = 11.51; % 2% settling time (s)
 
-%% Plant Transfer Function
+% Plant Transfer Function
 % TF from z_sp to z (seen by position controller)
 % z = (1/s)*dz;
 % dz = G_dz_cl*z_sp;
@@ -651,6 +654,7 @@ sys = sym2tf(G_z_cl);
 z_performance = stepinfo(sys);
 wb = bandwidth(sys);
 z_performance.Bandwidth = wb;
+slow_factor = wb_inner/wb; % Factor that outer controller is slower than inner controller
 z_performance.slow_factor = slow_factor;
 z_performance
 
@@ -685,7 +689,11 @@ function kp = kp_for_bandwidth(G,wb,wb_tol,kp_min,kp_max)
 % kp_min = minimum kp
 % kp_min = minimum kp
 
-    max_iterations = 1000;
+kp_min_param = kp_min; % Doesnt chnage during function
+kp_max_param = kp_max;
+
+    max_iterations = 200;
+    kp_found = 0;
     for i = 1:max_iterations
         kp_mid = mean([kp_max,kp_min]);
         sys = sym2tf(kp_mid*G/(1 + kp_mid*G));
@@ -699,10 +707,23 @@ function kp = kp_for_bandwidth(G,wb,wb_tol,kp_min,kp_max)
             kp_min = kp_mid;
         end
     end
-    if ~kp_found
-        error('kp_dtheta not found. Try changing search space')
-    end
     kp = kp_mid;
+    
+    % If still not found, increment until wb_actual > wb
+    if ~kp_found
+        for kp = kp_min_param:0.01:kp_max_param
+            sys = sym2tf(kp*G/(1 + kp*G));
+            wb_actual = bandwidth(sys); % Final bandwidth
+            if wb_actual>wb
+                kp_found = 1;
+                break;
+            end
+        end
+        if ~kp_found
+            error('kp_dtheta not found. Try changing search space')
+        end
+    end
+
     
 end
 

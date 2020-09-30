@@ -1,5 +1,4 @@
 %% PID controllers
-% load('drone_2D_PID_controllers.mat');
 load('Data/Drone_2D_control_params.mat'); % Load controller gain values
 
 %% Initial conditions
