@@ -2,16 +2,15 @@
 
 close all
 
-% s = tf('s'); % transfer function variable
-% G_Omega_y = (2*r/(tau*I_yy))/(s + (s + 1/tau)); % Omega_y/delta_E_r(s). Transfer function from elevator reference to angular rate
-
 syms s % Laplace variable
-syms delta_E
+syms delta_E % Virtual elevator
 syms I_yy % Moment of inertia of drone body about body x axis (kg.m^3)
 syms tau % Time constant for motors (s)
 syms r % Distance from COM to rotor thrust (m)
 syms theta_sp % Pitch set-point (rad)
-syms dx M F_x C_x_lin
+syms dx
+syms F_x 
+syms C_x_lin
 syms g
 syms F_x_r
 
@@ -107,13 +106,7 @@ plot([-1, 0, -1]*x_theta, [1, 0, -1]*max(ylim), '--');
 
 %% PID controller for dtheta:
 
-N_dx = 2*wb; % Frequency of Low Pas Filter (Manually tune)
-
-% Manual root locus plot of closed loop system with PID controller
-syms kd_dx
-% D_pid = @(kd_dx) kp_dx + ki_dx*(1/s) + kd_dx*s; % Without LPF
-D_pid = @(kd_dx) kp_dx + ki_dx*(1/s) + kd_dx*s*(N_dx/(1 + N_dx)); % Controller TF including low pass filter
-G_dx_cl = @(kd_dx) D_pid(kd_dx)*G_dx/(1 + D_pid(kd_dx)*G_dx); % Closed loop tf with P control for dtheta
+N_dtheta = 2*wb; % Frequency of Low Pas Filter (Manually tune)
 
 % Manual root locus plot of closed loop system with PID controller
 syms kd_dtheta
@@ -428,7 +421,7 @@ plot([1, 1]*sigma_p, ylim, '--'); % Settling time requirement limit
 % Step responce
 t_dist = 10;
 controller_step_responce(G_x, D_p, {'P'}, t_dist)
-title('Step responce of theta controllers')
+title('Step responce of x controller')
 
 % Performance parameters
 sys = sym2tf(G_x_cl);
@@ -440,16 +433,17 @@ x_performance
 
 
 %% Convert sym to tf objects
-% G_dtheta = sym2tf(G_dtheta);
-% G_th_dx = sym2tf(subs(G_th_dx));
-% G_dx = sym2tf(subs(G_dx));
+G_dtheta_tf = sym2tf(G_dtheta);
+G_th_dx = sym2tf(subs(G_th_dx));
+G_dx_tf = sym2tf(subs(G_dx));
 
 %% Save gain values
 description = 'PID gain values from PID_design_setup.m for drone 2D';
 save('Data/Drone_2D_control_params.mat', 'description', ...
-'kp_dtheta', 'ki_dtheta', 'kd_dtheta', ...
+'kp_dtheta', 'ki_dtheta', 'kd_dtheta', 'N_dtheta', ...
 'kp_theta', ...
-'kp_dx', 'ki_dx', 'kd_dx')
+'kp_dx', 'ki_dx', 'kd_dx', 'N_dx',...
+'kp_x')
 
 
 function TF = sym2tf(sym_TF)

@@ -14,10 +14,10 @@ load('Data/Drone_2D_control_params.mat'); % Load controller gain values
 % N_dz = 1/Tf_dz; % Derivative filter constant
 
 % X Velocity controller
-kp_dx = 10;
-ki_dx = 0.2;
-kd_dx = 1.3;
-N_dx = 100;
+% kp_dx = 10;
+% ki_dx = 0.2;
+% kd_dx = 1.3;
+% N_dx = 100;
 
 %% Save exported controllers from Simulink Tuner
 % For when a new controller is designed and exported
