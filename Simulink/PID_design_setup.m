@@ -25,7 +25,6 @@ C_Dz = 0.2; % Damping coef. of drone in z direction (f = cy*zdot)
 rho = 1.225; % Air density (kg/m^3)
 tau = 0.07; % Motor time constant
 dx_bar = 1; % Average x velocity to linearise at (m/s)
-C_x_lin = C_Dx*dx_bar; % Drag coef of linearised drag with average velocity
 
 % Motor mixing algorithm
 T1_r = -delta_E; % Thrust reference 1
@@ -231,24 +230,13 @@ G_F_x_r = theta_sp/F_x_r;
 % Small angle approx: sin(theta_sp) == theta_sp
 syms theta
 F_x = -2*delta_T*(theta);
+C_x_lin = C_Dx*dx_bar; % Linearised drag coef. at average velocity
 eqn = (F_x - C_x_lin*rho*dx == s*M*dx); % Equation of Newton 2nd law in x direction
 dx = solve(eqn, dx); % Solve for dx according to F_x from Newton 2nd law
 G_th_dx = dx/theta; % TF from theta to dx
 
 %% F_x_r to dx
 G_dx = G_F_x_r*G_theta_cl*G_th_dx; % dx/F_xr
-
-% % Model parameters
-% M = 4.5; % Mass of drone body (at fulcrum)
-% I_yy = 0.235; % Moment of inertia of drone body about body x axis
-% r = 0.49*1/sqrt(2); % Distance from each rotor force to COM of drone
-% g = -9.81; % Acceleration due to gravity (always negative)
-% C_Dx = 0.2 ;% Damping coef. of drone through air in x direction (f = C_Dx*xdot)
-% C_Dz = 0.2; % Damping coef. of drone in z direction (f = cy*zdot)
-% rho = 1.225; % Air density (kg/m^3)
-% tau = 0.07; % Motor time constant
-% dx_bar = 5; % Average x velocity to linearise (m/s)
-% C_x_lin = C_Dx*dx_bar; % Drag coef of linearised drag with average velocity
 
 % Substitute paramater values
 G_dtheta = subs(G_dtheta);
