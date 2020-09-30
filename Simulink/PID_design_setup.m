@@ -65,7 +65,7 @@ ts = 0.6; % 2% settling time (s)
 kp_min = 0.001;
 kp_max = 10;
 wb_tol = 0.001; % tolerance on bandwidth frequency
-kp_dtheta = kp_for_bandwidth(G_dtheta,wb,wb_tol,kp_min,kp_max)
+kp_dtheta = kp_for_bandwidth(G_dtheta,wb,wb_tol,kp_min,kp_max);
 
 %% Bode of closed loop plant with Kp
 % figure;
@@ -81,7 +81,7 @@ hold on;
 
 %% Plot current poles for kp needed for bandwidth
 current_pole = rlocus(sym2tf(kp_dtheta*G_dtheta), kp_dtheta);
-plot(real(current_pole), imag(current_pole), 'rx', 'Markersize', 10); % Plot current pole locatiosn
+plot(real(current_pole), imag(current_pole), 'rs', 'Markersize', 7); % Plot current pole locatiosn
 hold off;
 
 % Percentage overshoot:
@@ -108,7 +108,7 @@ hold on;
 
 % Plot current poles for kp needed for bandwidth
 current_pole = rlocus(sym2tf(D_pi*G_dtheta), kp_dtheta);
-plot(real(current_pole), imag(current_pole), 'rx', 'Markersize', 10); % Plot current pole locatiosn
+plot(real(current_pole), imag(current_pole), 'rs', 'Markersize', 7); % Plot current pole locatiosn
 ylim([min(imag(current_pole)), max(imag(current_pole))]*1.2); % adjust ylim to include plotted poles
 
 % Plot requirement limits
@@ -119,21 +119,21 @@ plot([-1, 0, -1]*x_theta, [1, 0, -1]*max(ylim), '--');
 % Calculate ki from z_c and kp
 ki_dtheta = kp_dtheta*z_c;
 
-% PID controller for dtheta
-figure;
+%% PID controller for dtheta:
 
 % Manual root locus plot of closed loop system with PID controller
 syms kd_dtheta
 D_dtheta = @(kd_dtheta) kp_dtheta + ki_dtheta*(1/s) + kd_dtheta*s;
-G_dtheta_cl = @(kd_dtheta) D_dtheta(kd_dtheta)*G_dtheta/(1 + D_dtheta(kd_dtheta)*G_dtheta); % Closed loop tf with PID control for dtheta
+G_dtheta_cl = @(kd_dtheta) D_dtheta(kd_dtheta)*G_dtheta/(1 + D_dtheta(kd_dtheta)*G_dtheta); % Closed loop tf with P control for dtheta
 % ???? Maybe use 3d plot to see effect of k
 figure;
 hold on;
+title('Root locus of plant with PID controller varied by kd');
 
-for kd_dtheta = 0:0.01:0.5
-    poles = pole(sym2tf(G_dtheta_cl(kd_dtheta)));
-    plot(real(poles), imag(poles), 'k.'); % Plot pole of current k
-end
+% for kd_dtheta = 0:0.01:0.5
+%     poles = pole(sym2tf(G_dtheta_cl(kd_dtheta)));
+%     plot(real(poles), imag(poles), 'k.'); % Plot pole of current k
+% end
 
 % Starting poles
 poles = pole(sym2tf(G_dtheta_cl(0)));
@@ -149,7 +149,7 @@ grid on;
 % Choose kd to place poles within desired region
 kd_dtheta = 0.06;
 poles = pole(sym2tf(G_dtheta_cl(kd_dtheta)));
-plot(real(poles), imag(poles), 'rx', 'MarkerSize', 10); % Plot pole of current k
+plot(real(poles), imag(poles), 'rs', 'MarkerSize', 7); % Plot pole of current k
 
 % Low pass filter
 N_dtheta = 100;
@@ -180,7 +180,7 @@ kp_min = 0.001;
 kp_max = 10;
 kp_theta = kp_for_bandwidth(G_theta,wb,wb_tol,kp_min,kp_max);
 
-%% Transfer function with theta and P controller 
+%% Transfer function inclucding P controller
 D_theta = kp_theta;
 G_theta_cl = D_theta*G_theta/(1 + D_theta*G_theta); % Closed loop tf with PID control for theta
 % G_theta_cl = theta/theta_sp
@@ -188,18 +188,18 @@ G_theta_cl = D_theta*G_theta/(1 + D_theta*G_theta); % Closed loop tf with PID co
 %% Bode of closed loop plant with Kp
 figure;
 bode(sym2tf(G_theta_cl));
-title('Closed-loop with Kp for desired bandwidth: G_theta. ');
+title('Closed-loop with Kp for desired bandwidth: G(theta)');
 grid on;
 
 %% Draw root locus of plant with proportional controller
 figure;
 rlocus(sym2tf(G_theta));
-title('G_theta root locus with P controller varied by kp')
+title('G(theta) with P controller varied by kp')
 hold on;
 
 %% Plot current poles for kp needed for bandwidth
 current_pole = rlocus(sym2tf(kp_theta*G_theta), kp_theta);
-plot(real(current_pole), imag(current_pole), 'rx', 'Markersize', 10); % Plot current pole locatiosn
+plot(real(current_pole), imag(current_pole), 'rs', 'Markersize', 7); % Plot current pole locatiosn
 
 % Settling time:
 sigma_p = log(0.02)/ts; % Real part limit of dominant pole, p for pole to avoid confusion with noise
@@ -209,6 +209,18 @@ plot([1, 1]*sigma_p, ylim, '--'); % Settling time requirement limit
 
 description = 'PID gain values from PID_design_setup.m for drone 2D';
 save('Data/Drone_2D_control_params.mat', 'description', 'kp_dtheta', 'ki_dtheta', 'kd_dtheta', 'kp_theta')
+
+%%-------------------------------------------------------------
+%% Velocity controller
+%%-------------------------------------------------------------
+
+%% Design requirements:
+
+% Reject disturbances
+% Zero steady-state error
+PO = 5; % Percentage Overshoot (%)
+wb = wb/2; % Desired dandwidth (rad/s). Slower than previous wb by a factor
+ts = 11.6; % 2% settling time (s)
 
 %% F_x_r to theta_sp
 % F_x_r = -delta_T*sin(theta_sp)
@@ -225,7 +237,7 @@ eqn = (F_x_r == -delta_T*(theta_sp));
 theta_sp = solve(eqn, theta_sp);
 G_F_x_r = theta_sp/F_x_r;
 
-%% theta to dx
+% theta to dx:
 % F_x = -delta_T*sin(theta)
 % Small angle approx: sin(theta_sp) == theta_sp
 syms theta
@@ -235,29 +247,128 @@ eqn = (F_x - C_x_lin*rho*dx == s*M*dx); % Equation of Newton 2nd law in x direct
 dx = solve(eqn, dx); % Solve for dx according to F_x from Newton 2nd law
 G_th_dx = dx/theta; % TF from theta to dx
 
-%% F_x_r to dx
+% F_x_r to dx:
 G_dx = G_F_x_r*G_theta_cl*G_th_dx; % dx/F_xr
 
-% Substitute paramater values
-G_dtheta = subs(G_dtheta);
-G_dx = subs(G_dx);
+%% P controller for dx:
 
-% Convert to tf object
-G_dtheta = sym2tf(G_dtheta)
-G_dx = sym2tf(subs(G_dx));
-G_th_dx = sym2tf(subs(G_th_dx))
-% G_F_x_r = sym2tf(subs(G_F_x_r))
-% %% Display values from angular rate controller design
-% D_Omega_y.Kp
-% D_Omega_y.Ki
-% D_Omega_y.Kd
-% 
-% save('Data/PID_tuned_values.mat', 'D_Omega_y', 'D_theta') % Save exported P structure from Simulink design
-% 
-% %% Display values from angular rate controller design
-% D_theta.Kp
-% 
-% save('Data/PID_tuned_values.mat', 'D_Omega_y', 'D_theta') % Save exported P structure from Simulink design
+%% Calculate Kp needed for desired bandwidth
+kp_min = 0.001;
+kp_max = 10;
+wb_tol = 0.001; % tolerance on bandwidth frequency
+kp_dx = kp_for_bandwidth(G_dx,wb,wb_tol,kp_min,kp_max);
+
+%% Transfer function including P controller
+D_dx = kp_dx;
+% G_dx_cl = dx/dx_sp
+G_dx_cl = D_dx*G_dx/(1 + D_dx*G_dx); % Closed loop tf with P control for theta
+
+%% Bode of closed loop plant with P controller
+% figure;
+% bode(sym2tf(G_dx_cl));
+% title('Closed-loop with Kp for desired bandwidth: G_dx');
+% grid on;
+
+%% Root locus of plant with P controller
+figure;
+rlocus(sym2tf(G_dx));
+title('G(dx) with P controller varied by kp')
+hold on;
+
+% Plot current poles for kp needed for bandwidth
+current_pole = rlocus(sym2tf(kp_dx*G_dx), kp_dx);
+plot(real(current_pole), imag(current_pole), 'rs', 'Markersize', 7); % Plot current pole locatiosn
+hold off;
+
+%% PI controller for dx:
+
+% Percentage overshoot:
+zeta = sqrt( (log(PO/100))^2 / (pi^2 + (log(PO/100))^2) );  % Damping ratio
+theta_pole = atan(sqrt(1 - zeta^2) / zeta); % Max angle from real axis to dominant pole
+
+% Settling time:
+sigma_p = log(0.02)/ts; % Real part limit of dominant pole, p for pole to avoid confusion with noise
+
+% Now implement PI controller
+% D_PI = Kp*(s + z_c) / s
+% Use I controller to reject disturbances (closed loop becomes type 2)
+% Use P controller to place in performance envelope
+
+% Pole of D_PI is at origin, so let zero be close to origin: z_c = 0.1
+z_c = 0.1; % z_c = ki/kp
+D_pi = (s + z_c) / s; % transfer function of Pi controller without kp
+
+% Root locus of plant with PI controller
+figure;
+rlocus(sym2tf(D_pi*G_dx));
+title('G_dx with PI controller varied by kp')
+hold on;
+
+% Plot current poles for kp needed for bandwidth
+current_pole = rlocus(sym2tf(D_pi*G_dx), kp_dx);
+plot(real(current_pole), imag(current_pole), 'rs', 'Markersize', 7); % Plot current pole locatiosn
+ylim([min(imag(current_pole)), max(imag(current_pole))]*1.2); % adjust ylim to include plotted poles
+
+% Plot requirement limits
+plot([1, 1]*sigma_p, ylim, '--'); % Settling time requirement limit
+x_theta = max(ylim)/tan(theta_pole); % x to plot theta line
+plot([-1, 0, -1]*x_theta, [1, 0, -1]*max(ylim), '--');
+
+% Calculate ki from z_c and kp
+ki_dx = kp_dx*z_c;
+
+%% PID controller for dx:
+
+% Manual root locus plot of closed loop system with PID controller
+syms kd_dx
+D_pid = @(kd_dx) kd_dx + ki_dx*(1/s) + kd_dx*s;
+G_dx_cl = @(kd_dx) D_pid(kd_dx)*G_dx/(1 + D_pid(kd_dx)*G_dx); % Closed loop tf with P control for dtheta
+% ???? Maybe use 3d plot to see effect of k
+figure;
+hold on;
+
+% for kd_dx = 0:0.01:3.5
+%     poles = pole(sym2tf(G_dx_cl(kd_dx)));
+%     plot3(real(poles), imag(poles), kd_dx*(real(poles)./real(poles)), 'k.'); % Plot pole of current k
+% end
+
+% Starting poles
+poles = pole(sym2tf(G_dx_cl(0)));
+plot(real(poles), imag(poles), 'bx'); % Plot pole of current k
+
+% Plot requirement limits
+plot([1, 1]*sigma_p, ylim, '--'); % Settling time requirement limit
+x_theta = max(ylim)/tan(theta_pole); % x to plot theta line
+plot([-1, 0, -1]*x_theta, [1, 0, -1]*max(ylim), '--');
+grid on;
+
+% Current poles:
+% Choose kd to place poles within desired region
+kd_dx = 0.01; % Manually adjust
+poles = pole(sym2tf(G_dx_cl(kd_dx)));
+plot(real(poles), imag(poles), 'rs', 'MarkerSize', 7); % Plot pole of current k
+
+% Low pass filter
+N_dx = 50; % Manually tune
+
+%% Step responce
+D_pid = D_pid(kd_dx);
+sys = sym2tf(D_pid*G_dx/(1 + D_pid*G_dx));
+Ts = 0.01;
+t = 0:Ts:20;
+u = ones(1,length(t));
+t_dist = 8; % Time of step disturbance (s)
+u(:, t_dist/Ts:end) = 2; % Add step disturbance at t = t_dist
+lsim(sys,u,t)
+
+%%
+G_dx_cl = simplifyFraction(subs(G_dx_cl(kd_dx))); % Convert type to symbolic, not anonymous function
+
+%% Convert sym to tf objects
+% G_dtheta = sym2tf(G_dtheta);
+% G_th_dx = sym2tf(subs(G_th_dx));
+% G_dx = sym2tf(subs(G_dx));
+
 
 function TF = sym2tf(sym_TF)
 % Converts symbolic representation of transfer function
@@ -273,7 +384,7 @@ function kp = kp_for_bandwidth(G,wb,wb_tol,kp_min,kp_max)
 % Find proportional feedback needed for specific bandwidth of transfer function
 % Using Binary search
 % kp = proportional feedback gain
-% G = open loop transfer function
+% G = open loop transfer function in symbolic format, not tf object
 % wb = desired bandwidth
 % wb_tol = allowable tolerance on bandwidth
 % kp_min = minimum kp
