@@ -26,6 +26,28 @@ tau = 0.07; % Motor time constant
 dx_bar = 1; % Average x velocity to linearise at (m/s)
 dz_bar = 1; % Average z velocity to linearise at (m/s)
 
+% % Anton controller gain values
+% kp_dtheta = 0.089;
+% ki_dtheta = 0.02;
+% kd_dtheta = 0.003;
+% N_dtheta = 500; % Ignore
+% 
+% kp_theta = 3;
+% 
+% kp_dx = 0.048;
+% ki_dx = 0.008;
+% kd_dx = 0.002;
+% N_dx = 5; % ignore
+% 
+% kp_x = 0.35;
+% 
+% kp_dz = 0.1;
+% ki_dz = 0.01;
+% kd_dz = 0;
+% N_dz = 5;
+% 
+% kp_z = 0.9;
+
 % Motor mixing algorithm
 T1_r = -delta_E; % Thrust reference 1
 T2_r = delta_E; % Thrust reference 2
@@ -56,7 +78,7 @@ G_dtheta = dtheta/delta_E;
 G_dtheta = subs(G_dtheta); % Substitute paramater values
 G_dtheta_tf = sym2tf(G_dtheta);
 
-% Design requirements:
+%% Design requirements:
 
 % Reject disturbances
 % Zero steady-state error
@@ -68,32 +90,74 @@ ts = 0.6; % 2% settling time (s)
 
 % Percentage overshoot:
 zeta = sqrt( (log(PO/100))^2 / (pi^2 + (log(PO/100))^2) );  % Damping ratio
+zeta = 1/sqrt(2); % Optimally damped
 theta_pole = atan(sqrt(1 - zeta^2) / zeta); % Max angle from real axis to dominant pole
 
 % Settling time:
 sigma_p = log(0.02)/ts; % Real part limit of dominant pole, p for pole to avoid confusion with noise
 
-% PI controller for dtheta:
+% Plot requirement limits
+figure;
+hold on;
+y_limits = [-8, 8];
+plot([1, 1]*sigma_p, y_limits, '--') % Settling time requirement limit
+x_theta = max(y_limits)/tan(theta_pole); % x to plot theta line
+plot([-1, 0, -1]*x_theta, [1, 0, -1]*max(y_limits), '--')
+
+% Root locus with P controller
+rlocus(sym2tf(G_dtheta));
+title('G(dtheta) with P controller root locus varied by kp')
+
+%% PI controller for dtheta:
 
 % D_PI = Kp*(s + z_c) / s
 % Use I controller to reject disturbances (closed loop becomes type 2)
 % Use P controller to place in performance envelope
 
-% Pole of D_PI is at origin, so let zero be close to origin: z_c = 0.1
-z_c = 0.1; % z_c = ki/kp
-D_pi = (s + z_c) / s; % transfer function of Pi controller without kp
+% Desired poles to meet zeta and sigma_p requirement
+omega_p = abs(sigma_p*tan(theta_pole)); % Imag part of desired pole
+desired_pole = sigma_p + 1i*omega_p;
 
-% Calculate Kp needed for desired bandwidth
-kp_min = 0.001;
-kp_max = 10;
-wb_tol = 0.001; % tolerance on bandwidth frequency
-kp_dtheta = kp_for_bandwidth(D_pi*G_dtheta,wb,wb_tol,kp_min,kp_max);
-D_pi = kp_dtheta*D_pi;
+% TF of PI controller
+% D_pi = kp*(s + ki/kp) / s; % transfer function of Pi controller
+% D_pi = kp*(s + z_c) / s;
+
+% Place zero of D_pi to reach desired pole
+syms z_c_angle % Angle from controller zero to desired pole
+pole_angles = sum(angle(desired_pole - [pole(G_dtheta_tf); 0])); % sum of angles from open-loop poles to desired pole
+% Note: controller adds open-loop pole at origin
+% Note: angle from point A to B = angle(B-A)
+
+zero_angles = sum(angle(desired_pole - zero(G_dtheta_tf))); % sum of angles from open-loop zeros to desired pole
+% Note: controller adds open-loop zero at z_c, with angle z_c_angle to
+% desired pole
+
+% Angle from zero to desired pole needed for Angle Criteria
+z_c_angle = (pole_angles - zero_angles - pi);
+
+% Zero needed to provide angle
+syms z_c % Zero of controller. z_c = ki/kp
+z_c_angle_eqn = ( tan(z_c_angle) == (imag(desired_pole))/(real(desired_pole) - (z_c)) );
+z_c = double(solve(z_c_angle_eqn, z_c));
+
+% Use Magnitude criteria to determine kp 
+syms kp_dtheta
+D_pi = (s - z_c) / s; % Controller without kp
+magnitude = abs(double(subs(D_pi*G_dtheta, s, desired_pole))) % substitute desired pole into s
+% mag_criteria = (magnitude == 1);
+kp_dtheta = 1/magnitude
+% D_pi = kp_dtheta*D_pi; % Add kp to PI controller
 
 % Calculate ki from z_c and kp
-ki_dtheta = kp_dtheta*z_c;
+ki_dtheta = -kp_dtheta*z_c;
 
-% Draw root locus
+% Calculate Kp needed for desired bandwidth
+% % kp_min = 0.001;
+% % kp_max = 10;
+% % wb_tol = 0.001; % tolerance on bandwidth frequency
+% % % % kp_dtheta = kp_for_bandwidth(D_pi*G_dtheta,wb,wb_tol,kp_min,kp_max);
+
+% Root locus with PI controller
 figure;
 rlocus(sym2tf(D_pi*G_dtheta));
 title('G(dtheta) with PI controller root locus varied by kp')
@@ -109,13 +173,16 @@ plot([1, 1]*sigma_p, ylim, '--'); % Settling time requirement limit
 x_theta = max(ylim)/tan(theta_pole); % x to plot theta line
 plot([-1, 0, -1]*x_theta, [1, 0, -1]*max(ylim), '--');
 
-% PID controller for dtheta:
+% Update Pi controller with final kp value
+D_pi = kp_dtheta*D_pi;
 
-N_dtheta = 2*wb; % Frequency of Low Pas Filter (Manually tune)
+%% PID controller for dtheta:
+
+% % N_dtheta = 2*wb; % Frequency of Low Pas Filter (Manually tune)
 
 % Manual root locus plot of closed loop system with PID controller
-syms kd_dtheta
-D_pid = @(kd_dtheta) kp_dtheta + ki_dtheta*(1/s) + kd_dtheta*s*(N_dtheta/(1 + N_dtheta));
+% % syms kd_dtheta
+D_pid = @(kd_dtheta) kp_dtheta + ki_dtheta*(1/s) + kd_dtheta*s;
 G_dtheta_cl = @(kd_dtheta) D_pid(kd_dtheta)*G_dtheta/(1 + D_pid(kd_dtheta)*G_dtheta); % Closed loop tf with P control for dtheta
 
 figure;
@@ -138,7 +205,8 @@ plot([-1, 0, -1]*x_theta, [1, 0, -1]*max(ylim), '--');
 grid on;
 
 % Choose kd to place poles within desired region
-kd_dtheta = 0.095;
+% % kd_dtheta = 0.095;
+kd_dtheta = 0;
 D_pid = D_pid(kd_dtheta);
 G_dtheta_cl = G_dtheta_cl(kd_dtheta);
 
@@ -185,7 +253,7 @@ G_theta_tf = sym2tf(G_theta);
 wb_tol = 0.001;
 kp_min = 0.001;
 kp_max = 10;
-kp_theta = kp_for_bandwidth(G_theta,wb,wb_tol,kp_min,kp_max);
+% % kp_theta = kp_for_bandwidth(G_theta,wb,wb_tol,kp_min,kp_max);
 
 % Transfer function inclucding P controller
 D_p = kp_theta;
@@ -296,10 +364,10 @@ D_pi = (s + z_c) / s; % transfer function of Pi controller without kp
 kp_min = 0.001;
 kp_max = 30;
 wb_tol = 0.001; % tolerance on bandwidth frequency
-kp_dx = kp_for_bandwidth(D_pi*G_dx,wb,wb_tol,kp_min,kp_max);
+% % kp_dx = kp_for_bandwidth(D_pi*G_dx,wb,wb_tol,kp_min,kp_max);
 
 % Calculate ki from z_c and kp
-ki_dx = kp_dx*z_c;
+% % ki_dx = kp_dx*z_c;
 D_pi = kp_dx + ki_dx*(1/s); % PI controller TF
 
 % Root locus of plant with PI controller
@@ -320,11 +388,10 @@ plot([-1, 0, -1]*x_theta, [1, 0, -1]*max(ylim), '--');
 
 % PID controller for dx:
 
-% ???? Low pass filter (need to decide how to pick filter value
-N_dx = wb*2; % Frequency of Low Pas Filter (Manually tune)
+% % N_dx = wb*2; % Frequency of Low Pas Filter (Manually tune)
 
 % Manual root locus plot of closed loop system with PID controller
-syms kd_dx
+% % syms kd_dx
 % D_pid = @(kd_dx) kp_dx + ki_dx*(1/s) + kd_dx*s; % Without LPF
 D_pid = @(kd_dx) kp_dx + ki_dx*(1/s) + kd_dx*(N_dx/(1 + N_dx/s)); % Controller TF including low pass filter
 G_dx_cl = @(kd_dx) D_pid(kd_dx)*G_dx/(1 + D_pid(kd_dx)*G_dx); % Closed loop tf with P control for dtheta
@@ -346,7 +413,7 @@ x_theta = max(ylim)/tan(theta_pole); % x to plot theta line
 plot([-1, 0, -1]*x_theta, [1, 0, -1]*max(ylim), '--');
 
 % Choose kd to place poles within desired region
-kd_dx = 0; % Manually adjust
+% % kd_dx = 0; % Manually adjust
 
 % Insert final parameter into TFs
 D_pid = D_pid(kd_dx);
@@ -396,7 +463,7 @@ G_x_tf = sym2tf(G_x);
 wb_tol = 0.001;
 kp_min = 0.001;
 kp_max = 10;
-kp_x = kp_for_bandwidth(G_x,wb,wb_tol,kp_min,kp_max);
+% % kp_x = kp_for_bandwidth(G_x,wb,wb_tol,kp_min,kp_max);
 
 % Transfer function inclucding P controller
 D_p = kp_x;
@@ -516,10 +583,10 @@ D_pi = (s + z_c) / s; % transfer function of Pi controller without kp
 kp_min = 0.001;
 kp_max = 30;
 wb_tol = 0.001; % tolerance on bandwidth frequency
-kp_dz = kp_for_bandwidth(D_pi*G_dz,wb,wb_tol,kp_min,kp_max);
+% % kp_dz = kp_for_bandwidth(D_pi*G_dz,wb,wb_tol,kp_min,kp_max);
 
 % Calculate ki from z_c and kp
-ki_dz = kp_dz*z_c;
+% % ki_dz = kp_dz*z_c;
 D_pi = kp_dz + ki_dz*(1/s); % PI controller TF
 
 % Root locus of plant with PI controller
@@ -539,11 +606,10 @@ plot([-1, 0, -1]*x_theta, [1, 0, -1]*max(ylim), '--');
 
 % PID controller for dz:
 
-% ???? Low pass filter (need to decide how to pick filter value
-N_dz = wb*2; % Frequency of Low Pas Filter (Manually tune)
+% % N_dz = wb*2; % Frequency of Low Pas Filter (Manually tune)
 
 % Manual root locus plot of closed loop system with PID controller
-syms kd_dz
+% % syms kd_dz
 % D_pid = @(kd_dz) kp_dz + ki_dz*(1/s) + kd_dz*s; % Without LPF
 D_pid = @(kd_dz) kp_dz + ki_dz*(1/s) + kd_dz*(N_dz/(1 + N_dz/s)); % Controller TF including low pass filter
 G_dz_cl = @(kd_dz) D_pid(kd_dz)*G_dz/(1 + D_pid(kd_dz)*G_dz); % Closed loop tf with P control for dtheta
@@ -566,7 +632,7 @@ x_theta = max(ylim)/tan(theta_pole); % x to plot theta line
 plot([-1, 0, -1]*x_theta, [1, 0, -1]*max(ylim), '--');
 
 % Choose kd to place poles within desired region
-kd_dz = 0; % Manually adjust
+% % kd_dz = 0; % Manually adjust
 
 % Insert final parameter into TFs
 D_pid = D_pid(kd_dz);
@@ -616,7 +682,7 @@ G_z_tf = sym2tf(G_z);
 wb_tol = 0.001;
 kp_min = 0.001;
 kp_max = 10;
-kp_z = kp_for_bandwidth(G_z,wb,wb_tol,kp_min,kp_max);
+% % kp_z = kp_for_bandwidth(G_z,wb,wb_tol,kp_min,kp_max);
 
 % Transfer function inclucding P controller
 D_p = kp_z;
