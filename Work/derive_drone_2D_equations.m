@@ -3,7 +3,7 @@
 % North East Down axis system. Therefore z is down
 clear all
 
-% Define symbolic variables
+% Symbolic variables
 syms M % Mass of drone body (at fulcrum)
 syms I_yy % Moment of inertia of drone body about body x axis
 syms r % Distance from each rotor force to COM of drone
@@ -42,13 +42,13 @@ L = KE_M - PE_M;
 L = simplify(L);
 
 % Non-conservative Forces 
-% ?? Add time constant model for motor thrusts?
-Qx = -(F1 + F2)*sin(theta) - 0.5*rho*dx*abs(dx)*C_Dx; % Aerodynamic drag from A. Erasmus thesis, (3.45)
-Qz = -(F1 + F2)*cos(theta) - 0.5*rho*dz*abs(dz)*C_Dz; % NB: z is down
+% Time-constant model for motor thrusts are modelled in simulink
+Qx = -(T1 + T2)*sin(theta) - 0.5*rho*dx*abs(dx)*C_Dx; % Aerodynamic drag from A. Erasmus thesis, (Chp 3.45)
+Qz = -(T1 + T2)*cos(theta) - 0.5*rho*dz*abs(dz)*C_Dz; % NB: z is down
 
 % Non-conservative Torques
 % ?? no aerodynamic drag on rotation?
-Qtheta = F2*r - F1*r; % Torques caused be rotor forces
+Qtheta = T2*r - T1*r; % Torques caused be rotor forces
 
 % Lagrangian equations
 eq_x     = euler_lag(L, x, Qx, t); 

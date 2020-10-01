@@ -3,26 +3,26 @@
 % North East Down axis system. Therefore z is down
 clear all
 
-% Define symbolic variables
+% Symbolic variables
 syms M % Mass of drone body (at fulcrum)
-syms m % Mass of swinging payload
-syms I % Moment of inertia of drone body
-syms l % Length of pendulum
+syms I_yy % Moment of inertia of drone body about body x axis
 syms r % Distance from each rotor force to COM of drone
 syms g % Acceleration due to gravity (always negative)
-syms cx % Damping coef. of drone through air in x direction (f = cx*xdot)
-syms cz % Damping coef. of drone in z direction (f = cy*zdot)
-syms ctheta % Damping coef. of drone in theta direction (f = ct*thetadot)
-syms cbeta % Damping coef. of drone in theta direction (f = ct*thetadot)
+syms C_Dx % Damping coef. of drone through air in x direction (f = C_Dx*xdot)
+syms C_Dz % Damping coef. of drone in z direction (f = cy*zdot)
+syms rho % Air density
 syms t % Time
+syms m % Mass of swinging payload
+syms l % Length of pendulum
 
-syms F1 % Rotor force on drone on left of COM
-syms F2 % Rotor force on drone on right of COM
+syms T1 % Rotor thrust on drone on left of COM
+syms T2 % Rotor thrust on drone on right of COM
 
 syms x(t) % x position of drone
 syms z(t) % z position of drone
 syms theta(t) % Pitch angle of drone (horisontal = 0 rad)
 syms beta(t) % Suspended angle of payload cable (vertical down = 0 rad)
+
 syms dx % dx/dt of drone 
 syms dz % dz/dt of drone 
 syms dtheta % dtheta/dt of drone
@@ -53,12 +53,14 @@ PE_m = m*g*z_m; % Potential energy of payload
 L = (KE_M + KE_m) - (PE_M + PE_m);
 L = simplify(L);
 
-% Non-conservative Forces 
-Qx = -(F1 + F2)*sin(theta) - cx*dx; % ?? change cx air damping according to pitch
-Qz = -(F1 + F2)*cos(theta) - cz*dz; % NB: z is down
+% Non-conservative Forces
+% Time-constant model for motor thrusts are modelled in simulink
+Qx = -(T1 + T2)*sin(theta) - 0.5*rho*dx*abs(dx)*C_Dx; % Aerodynamic drag from A. Erasmus thesis, (Chp 3.45)
+Qz = -(T1 + T2)*cos(theta) - 0.5*rho*dz*abs(dz)*C_Dz; % NB: z is down
 
 % Non-conservative Torques
-Qtheta = F2*r - F1*r - ctheta*dtheta; % Torques caused be rotor forces and air damping
+% ?? no aerodynamic drag on rotation?
+Qtheta = T2*r - T1*r; % Torques caused be rotor forces
 Qbeta  = -cbeta*dbeta; % Torques caused air damping on rotation of cable
 
 % Lagrangian equations

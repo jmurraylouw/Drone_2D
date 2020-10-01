@@ -50,13 +50,13 @@ dtheta = (1/s)*ddtheta; % Angular velocity is integral of Angular accelration
 %% Angular rate controller
 %%-------------------------------------------------------------
 
-%% Plant Transfer Function
+% Plant Transfer Function
 % Transfer function from delta_E to dtheta
 G_dtheta = dtheta/delta_E;
 G_dtheta = subs(G_dtheta); % Substitute paramater values
 G_dtheta_tf = sym2tf(G_dtheta);
 
-%% Design requirements:
+% Design requirements:
 
 % Reject disturbances
 % Zero steady-state error
@@ -73,7 +73,8 @@ theta_pole = atan(sqrt(1 - zeta^2) / zeta); % Max angle from real axis to domina
 % Settling time:
 sigma_p = log(0.02)/ts; % Real part limit of dominant pole, p for pole to avoid confusion with noise
 
-% Now implement PI controller
+% PI controller for dtheta:
+
 % D_PI = Kp*(s + z_c) / s
 % Use I controller to reject disturbances (closed loop becomes type 2)
 % Use P controller to place in performance envelope
@@ -108,7 +109,7 @@ plot([1, 1]*sigma_p, ylim, '--'); % Settling time requirement limit
 x_theta = max(ylim)/tan(theta_pole); % x to plot theta line
 plot([-1, 0, -1]*x_theta, [1, 0, -1]*max(ylim), '--');
 
-%% PID controller for dtheta:
+% PID controller for dtheta:
 
 N_dtheta = 2*wb; % Frequency of Low Pas Filter (Manually tune)
 
