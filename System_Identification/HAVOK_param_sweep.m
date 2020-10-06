@@ -5,21 +5,23 @@
 close all;
 clear all;
 
+total_timer = tic; % Start timer for this script
+
 % Search space
 q_min = 30; % Min value of q in grid search
-q_max = 300; % Max value of q in grid search
+q_max = 100; % Max value of q in grid search
 q_increment = 1; % Increment value of q in grid search
 
 p_min = 30; % Min value of p in grid search
-p_max = 500; % Max value of p in grid search
+p_max = 200; % Max value of p in grid search
 p_increment = 1; % Increment value of p in grid search
 
 q_search = q_min:q_increment:q_max; % List of q parameters to search in
 % p_search defined before p for loop
 
 % Extract data
-simulation_data_file = 'Data/No_payload_data_1.mat';
-load(['Data/', simulation_data_file]) % Load simulation data
+simulation_data_file = 'No_payload_data_1';
+load(['Data/', simulation_data_file, '.mat']) % Load simulation data
 
 u_data  = out.F_r.Data';
 x_data  = out.x.Data';
@@ -28,8 +30,7 @@ y_data  = x_data(measured_states,:); % Measurement data (x, z, theta)
 t       = out.tout'; % Time
 
 % Adjust for constant disturbance / mean control values
-u_bar = mean(u_data,2)
-stop% Input needed to keep at a fixed point
+u_bar = mean(u_data,2); % Input needed to keep at a fixed point
 % u_bar = [0; M*g];
 u_data  = u_data - u_bar; % Adjust for unmeasured input
 
@@ -54,7 +55,7 @@ sigma = 0.01; % Noise standard deviation
 y_data_noise = y_data + sigma*randn(size(y_data));
 
 % Training data - Last sample of training is first sample of testing
-N_train = 4000; % Number of sampels in training data
+N_train = 5000; % Number of sampels in training data
 y_train = y_data_noise(:,end-N_test-N_train+2:end-N_test+1); % Use noisy data
 u_train = u_data(:,end-N_test-N_train+2:end-N_test+1);
 t_train = t(:,end-N_test-N_train+2:end-N_test+1);
@@ -84,12 +85,12 @@ catch
     emptry_row = 1; % Keep track of next empty row to insert results 
 end
 
-tic;
-
 % Grid search
+format compact % display more compact
 for q = q_search
         q_is_new = 1; % 1 = first time using this q this session
         q
+        tic;
         
         p_max_new = min([p_max, q*m]); % Max p to avoid out of bounds 
         p_search = p_min:p_increment:p_max_new; % List of p to search, for every q
@@ -164,10 +165,9 @@ for q = q_search
         end % p
         
         save(results_file, 'results', 'emptry_row')
-
+        toc;
 end % q
-
-toc;
+format short % back to default/short display
 
 % Save results
 results(~results.q,:) = []; % remove empty rows
@@ -175,6 +175,9 @@ save(results_file, 'results', 'emptry_row')
 
 best_row = find(results.MAE_mean == min(results.MAE_mean));
 best_results = results(best_row,:)
+
+total_time = toc(total_timer); % Display total time taken
+
 
 function A = stabilise(A_unstable,max_iterations)
     % If some eigenvalues are unstable due to machine tolerance,

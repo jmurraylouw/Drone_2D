@@ -42,8 +42,8 @@ u_train = u_data(:,end-N_test-N_train+2:end-N_test+1);
 t_train = t(:,end-N_test-N_train+2:end-N_test+1);
 
 % Parameters
-q = 152;
-p = 89;
+q = 33;
+p = 96;
 w = N_train - q + 1; % num columns of Hankel matrix
 D = (q-1)*Ts; % Delay duration (Dynamics in delay embedding)
 
@@ -94,7 +94,7 @@ A = stabilise(A,10);
 
 % Compare to testing data
 
-%Run with A_bar, B_bar and x
+% Run with A_bar, B_bar and x
 figure;
 plot(V1(:,1:5))
 
