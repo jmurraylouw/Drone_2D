@@ -48,6 +48,7 @@ l = size(u_data,1); % number of inputs
 Ts = t(2)-t(1);     % Sample time of data
 N  = length(t);     % Number of data samples
 
+
 % Add noise
 rng('default');
 rng(1); % Repeatable random numbers
