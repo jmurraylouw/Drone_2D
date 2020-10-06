@@ -48,7 +48,6 @@ l = size(u_data,1); % number of inputs
 Ts = t(2)-t(1);     % Sample time of data
 N  = length(t);     % Number of data samples
 
-
 % Add noise
 rng('default');
 rng(1); % Repeatable random numbers
@@ -56,7 +55,7 @@ sigma = 0.001; % Noise standard deviation
 y_data_noise = y_data + sigma*randn(size(y_data));
 
 % Training data - Last sample of training is first sample of testing
-N_train = 5000; % Number of sampels in training data
+N_train = 5000; % Number of sampels in training data x
 y_train = y_data_noise(:,end-N_test-N_train+2:end-N_test+1); % Use noisy data
 u_train = u_data(:,end-N_test-N_train+2:end-N_test+1);
 t_train = t(:,end-N_test-N_train+2:end-N_test+1);
