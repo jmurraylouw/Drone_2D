@@ -449,7 +449,6 @@ close all
 % Reject disturbances
 % Zero steady-state error
 PO = 12; % Percentage Overshoot (%)
-% ??? correct other controllers to use performance struct for wb_inner
 wb_inner = motor_wb;
 wb = 2.9; % Desired dandwidth (rad/s). Slower than previous wb by a factor
 ts = 11.6; % 2% settling time (s)
@@ -509,7 +508,7 @@ sigma_p = log(0.02)/ts; % Real part limit of dominant pole, p for pole to avoid 
 % Use P controller to place in performance envelope
 
 % Pole of D_PI is at origin, so let zero be close to origin: z_c = 0.1
-z_c = 1.4; % z_c = ki/kp
+z_c = 0.1; % z_c = ki/kp
 D_pi = (s + z_c) / s; % transfer function of Pi controller without kp
 
 % Place kp for bandwidth
