@@ -1,13 +1,11 @@
-% Implentation of Hankel Alternative View Of Koopman
+%% Implentation of Hankel Alternative View Of Koopman for 2D Drone
 close all;
 
-% load('cartpend_random_1.mat') % Load simulation data
-% load('Data/cartpend_disturbance_and_PID_1.mat') % Load simulation data
-simulation_data_file = 'floating_pend_2D_data_3';
-load(['Data/', simulation_data_file, '.mat']) % Load simulation data
+simulation_data_file = 'No_payload_data_1.mat';
+load(['Data/', simulation_data_file]) % Load simulation data
 
 % Extract data
-u_data  = out.u.Data';
+u_data  = out.F_r.Data';
 x_data  = out.x.Data';
 y_data  = x_data([1,2,3],:); % Measurement data (x, z, theta)
 t       = out.tout'; % Time

@@ -1,4 +1,4 @@
-% Implentation of Hankel Alternative View Of Koopman
+%% Implentation of Hankel Alternative View Of Koopman for 2D Drone
 % Grid search of parameters
 % Saves all the results for different parameter combinations
 
@@ -18,18 +18,19 @@ q_search = q_min:q_increment:q_max; % List of q parameters to search in
 % p_search defined before p for loop
 
 % Extract data
-simulation_data_file = 'floating_pend_2D_data_3';
-load(['Data/', simulation_data_file, '.mat']) % Load simulation data
+simulation_data_file = 'Data/No_payload_data_1.mat';
+load(['Data/', simulation_data_file]) % Load simulation data
 
-u_data  = out.u.Data';
+u_data  = out.F_r.Data';
 x_data  = out.x.Data';
 measured_states = [1,2,3];
 y_data  = x_data(measured_states,:); % Measurement data (x, z, theta)
 t       = out.tout'; % Time
 
 % Adjust for constant disturbance / mean control values
-u_bar = mean(u_data,2); % Input needed to keep at a fixed point
-% u_bar = [0; 6*9.81];
+u_bar = mean(u_data,2)
+stop% Input needed to keep at a fixed point
+% u_bar = [0; M*g];
 u_data  = u_data - u_bar; % Adjust for unmeasured input
 
 % Testing data - Last 50 s is for testing and one sample overlaps training 
