@@ -1,8 +1,8 @@
 %% Implentation of Hankel Alternative View Of Koopman for 2D Drone
 close all;
 
-simulation_data_file = 'No_payload_data_1.mat';
-load(['Data/', simulation_data_file]) % Load simulation data
+simulation_data_file = 'No_payload_data_2';
+load(['Data/', simulation_data_file, '.mat']) % Load simulation data
 
 % Extract data
 u_data  = out.F_r.Data';
@@ -16,7 +16,7 @@ u_bar = mean(u_data,2); % Input needed to keep at a fixed point
 u_data  = u_data - u_bar; % Adjust for unmeasured input
 
 % Testing data - Last 50 s is for testing and one sample overlaps training 
-N_test = 2000; % Num of data samples for testing
+N_test = 5000; % Num of data samples for testing
 x_test = x_data(:,end-N_test+1:end);
 y_test = y_data(:,end-N_test+1:end); % One sample of testing data overlaps for initial condition
 u_test = u_data(:,end-N_test+1:end);
@@ -32,18 +32,35 @@ N  = length(t);     % Number of data samples
 % Add noise
 rng('default');
 rng(1); % Repeatable random numbers
-sigma = 0.01; % Noise standard deviation
+sigma = 0.0001; % Noise standard deviation
 y_data_noise = y_data + sigma*randn(size(y_data));
 
 % Training data - Last sample of training is first sample of testing
-N_train = 4000; % Number of sampels in training data
+N_train = 5000; % Number of sampels in training data
 y_train = y_data_noise(:,end-N_test-N_train+2:end-N_test+1); % Use noisy data
 u_train = u_data(:,end-N_test-N_train+2:end-N_test+1);
 t_train = t(:,end-N_test-N_train+2:end-N_test+1);
 
+% Read previous results
+sig_str = strrep(num2str(sigma),'.','_'); % Convert sigma value to string
+results_file = ['Data/havok_results_', simulation_data_file, '_sig=', sig_str, '.mat'];
+
+try
+    load(results_file);
+    results(~results.q,:) = []; % remove empty rows
+catch
+    disp('No saved results file')  
+end
+
 % Parameters
-q = 33;
-p = 96;
+best_row = find(results.MAE_mean == min(results.MAE_mean));
+best_results = results(best_row,:)
+q = double(best_results.q);
+p = double(best_results.p);
+
+q = 65; % Override
+p = 60; % Override
+
 w = N_train - q + 1; % num columns of Hankel matrix
 D = (q-1)*Ts; % Delay duration (Dynamics in delay embedding)
 
@@ -73,13 +90,13 @@ V_til_1 = V_tilde(1:end-1, :)';
 
 % DMD on V
 AB_tilde = V_til_2*pinv(V_til_1); % combined A and B matrix, side by side
-AB_tilde = stabilise(AB_tilde,3);
+AB_tilde = stabilise(AB_tilde,10);
 
 % convert to x coordinates
 AB_bar = (U_tilde*S_tilde)*AB_tilde*pinv(U_tilde*S_tilde);
 A_bar = AB_bar(1:q*m, 1:q*m);
 B_bar = AB_bar(1:q*m, q*m+1:end);
-% A_bar = stabilise(A_bar,3);
+A_bar = stabilise(A_bar,10);
 
 % DMD of Y
 Y2 = Y(:, 2:end  );
@@ -140,7 +157,7 @@ MAE = sum(abs(y_hat - y_test), 2)./N_test % For each measured state
 % Compare MAE and MAE_til
 MAE_error_percent = (MAE - MAE_bar)./MAE_bar*100
 
-% Plot data vs model
+%% Plot data vs model
 figure;
 plot(t_train, y_train);
 hold on;
@@ -148,10 +165,11 @@ plot(t_test, y_test);
 
 plot(t_test, y_hat, 'k--', 'LineWidth', 1); % Plot only non-delay coordinate
 plot(t_test, y_hat_bar, 'r--', 'LineWidth', 1); % Plot only non-delay coordinate
-plot((D + t(N-N_test-N_train)).*[1,1], ylim, 'r');
+plot((D + t(N-N_test-N_train)).*[1, 1], ylim, 'r');
 plot(t(N-N_test-N_train).*[1,1], ylim, 'k');
 plot(t(N-N_test).*[1,1], ylim, 'k');
 title('Training and Testing data vs Model');
+legend('','','','','','', 'x hat','z hat','theta hat', 'x hat bar','z hat bar','theta hat bar');
 hold off;
 
 function A = stabilise(A_unstable,max_iterations)
@@ -162,11 +180,12 @@ function A = stabilise(A_unstable,max_iterations)
     while (sum(abs(eig(A)) > 1) ~= 0)       
         [Ve,De] = eig(A);
         unstable = abs(De)>1; % indexes of unstable eigenvalues
-        De(unstable) = De(unstable)./abs(De(unstable)) - 10^(-16 + count*2); % Normalize all unstable eigenvalues (set abs(eig) = 1)
+        De(unstable) = De(unstable)./abs(De(unstable)) - 10^(-12 + count*3); % Normalize all unstable eigenvalues (set abs(eig) = 1)
         A = Ve*De/(Ve); % New A with margininally stable eigenvalues
         A = real(A);
         count = count+1;
-        if(count>max_iterations)
+        if(count > max_iterations)
+            'max_iterations'
             break
         end
     end
@@ -174,5 +193,6 @@ function A = stabilise(A_unstable,max_iterations)
     if (sum(abs(eig(A)) > 1) ~= 0) % If eigenvalues are still unstable
         error('Eigenvalues are unstable'); % Exit this p loop if still unstable
     end
+    count
 end
 
