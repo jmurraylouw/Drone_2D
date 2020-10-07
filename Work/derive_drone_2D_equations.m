@@ -81,11 +81,9 @@ old = [states; dstates];
 new = X;
 ddstates = subs(ddstates, old, new);
 
-%% Display to copy
+%% Display to copy into script
 for i = 1:n/2
-    disp(i + n/2)
-    (ddstates(i))
-    disp("-------------------------------")
+    fprintf('dx(%d,1) = %s;\n',(i + n/2),ddstates(i))
 end
 
 %% Display pretty equations

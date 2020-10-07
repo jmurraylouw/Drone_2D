@@ -12,8 +12,10 @@ syms C_Dx % Damping coef. of drone through air in x direction (f = C_Dx*xdot)
 syms C_Dz % Damping coef. of drone in z direction (f = cy*zdot)
 syms rho % Air density
 syms t % Time
+
 syms m % Mass of swinging payload
 syms l % Length of pendulum
+syms cbeta % Rotational damping coef of payload at connection
 
 syms T1 % Rotor thrust on drone on left of COM
 syms T2 % Rotor thrust on drone on right of COM
@@ -39,7 +41,7 @@ dtheta    = diff(theta, t);
 dbeta     = diff(beta, t);
 
 % Drone body equations
-KE_M = 0.5*M*(dx^2 + dz^2) + 0.5*I*dtheta^2; % Kinetic energy of drone body (linear + rotational)
+KE_M = 0.5*M*(dx^2 + dz^2) + 0.5*I_yy*dtheta^2; % Kinetic energy of drone body (linear + rotational)
 PE_M = M*g*z; % Potential energy of drone body
 
 % Payload equations
@@ -54,13 +56,14 @@ L = (KE_M + KE_m) - (PE_M + PE_m);
 L = simplify(L);
 
 % Non-conservative Forces
+% ???? Add damping of payload
 % Time-constant model for motor thrusts are modelled in simulink
 Qx = -(T1 + T2)*sin(theta) - 0.5*rho*dx*abs(dx)*C_Dx; % Aerodynamic drag from A. Erasmus thesis, (Chp 3.45)
 Qz = -(T1 + T2)*cos(theta) - 0.5*rho*dz*abs(dz)*C_Dz; % NB: z is down
 
 % Non-conservative Torques
 % ?? no aerodynamic drag on rotation?
-Qtheta = T2*r - T1*r; % Torques caused be rotor forces
+Qtheta = T2*r - T1*r; % Torques caused by rotor forces
 Qbeta  = -cbeta*dbeta; % Torques caused air damping on rotation of cable
 
 % Lagrangian equations
@@ -95,11 +98,9 @@ old = [states; dstates];
 new = X;
 ddstates = subs(ddstates, old, new);
 
-%% Display to copy
+%% Display to copy into script
 for i = 1:n/2
-    disp(i + n/2)
-    (ddstates(i))
-    disp("-------------------------------")
+    fprintf('dx(%d,1) = %s;\n',(i + n/2),ddstates(i))
 end
 
 %% Display pretty equations
