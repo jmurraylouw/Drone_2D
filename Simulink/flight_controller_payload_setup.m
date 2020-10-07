@@ -1,8 +1,12 @@
+%% Setup workspace for simulation: flight_controller_payload.slx
+% Called from InitFunc callback
+
 %% PID controllers
 load('Data/Drone_2D_control_params.mat'); % Load controller gain values
 
 %% Initial conditions
-x0 = zeros(6,1); 
+n = 6; % Number of states
+x0 = zeros(n,1); 
 u0 = [0; 0];
 
 % Model parameters
@@ -14,6 +18,10 @@ C_Dx  = 0.2 ; % Damping coef. of drone through air in x direction (f = C_Dx*xdot
 C_Dz  = 0.2; % Damping coef. of drone in z direction (f = cy*zdot)
 rho   = 1.225; % Air density (kg/m^3)
 tau   = 0.07; % Motor time constant
+
+m     = 2; % Mass of swinging payload (kg)
+l     = 1; % Length of pendulum (m)
+cbeta = 0.1; % Rotational damping coef of payload at connection
 
 % Mixing Matrix
 MM = [-1, 1;
