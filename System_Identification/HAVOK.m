@@ -1,7 +1,7 @@
 %% Implentation of Hankel Alternative View Of Koopman for 2D Drone
-close all;
+% close all;
 
-simulation_data_file = 'No_payload_data_2';
+simulation_data_file = 'No_payload_data_3';
 load(['Data/', simulation_data_file, '.mat']) % Load simulation data
 
 % Extract data
@@ -11,12 +11,12 @@ y_data  = x_data([1,2,3],:); % Measurement data (x, z, theta)
 t       = out.tout'; % Time
 
 % Adjust for constant disturbance / mean control values
-u_bar = mean(u_data,2); % Input needed to keep at a fixed point
-% u_bar = [0; 6*9.81];
+% u_bar = mean(u_data,2); % Input needed to keep at a fixed point
+% u_bar = [0; 4.5*9.81];
 u_data  = u_data - u_bar; % Adjust for unmeasured input
 
 % Testing data - Last 50 s is for testing and one sample overlaps training 
-N_test = 5000; % Num of data samples for testing
+% N_test = 5000; % Num of data samples for testing
 x_test = x_data(:,end-N_test+1:end);
 y_test = y_data(:,end-N_test+1:end); % One sample of testing data overlaps for initial condition
 u_test = u_data(:,end-N_test+1:end);
@@ -32,11 +32,11 @@ N  = length(t);     % Number of data samples
 % Add noise
 rng('default');
 rng(1); % Repeatable random numbers
-sigma = 0.0001; % Noise standard deviation
+% sigma = 0.001; % Noise standard deviation
 y_data_noise = y_data + sigma*randn(size(y_data));
 
 % Training data - Last sample of training is first sample of testing
-N_train = 5000; % Number of sampels in training data
+% N_train = 5000; % Number of sampels in training data
 y_train = y_data_noise(:,end-N_test-N_train+2:end-N_test+1); % Use noisy data
 u_train = u_data(:,end-N_test-N_train+2:end-N_test+1);
 t_train = t(:,end-N_test-N_train+2:end-N_test+1);
@@ -58,8 +58,8 @@ best_results = results(best_row,:)
 q = double(best_results.q);
 p = double(best_results.p);
 
-q = 65; % Override
-p = 60; % Override
+% q = 300; % Override
+% p = 120; % Override
 
 w = N_train - q + 1; % num columns of Hankel matrix
 D = (q-1)*Ts; % Delay duration (Dynamics in delay embedding)
@@ -90,13 +90,13 @@ V_til_1 = V_tilde(1:end-1, :)';
 
 % DMD on V
 AB_tilde = V_til_2*pinv(V_til_1); % combined A and B matrix, side by side
-AB_tilde = stabilise(AB_tilde,10);
+AB_tilde = stabilise(AB_tilde,3);
 
 % convert to x coordinates
 AB_bar = (U_tilde*S_tilde)*AB_tilde*pinv(U_tilde*S_tilde);
 A_bar = AB_bar(1:q*m, 1:q*m);
 B_bar = AB_bar(1:q*m, q*m+1:end);
-A_bar = stabilise(A_bar,10);
+% A_bar = stabilise(A_bar,10);
 
 % DMD of Y
 Y2 = Y(:, 2:end  );
@@ -107,13 +107,14 @@ AB = Y2*pinv(YU); % combined A and B matrix, side by side
 A  = AB(:,1:q*m); % Extract A matrix
 B  = AB(:,(q*m+1):end);
 
-A = stabilise(A,10);
+% A = stabilise(A,10);
 
 % Compare to testing data
 
-% Run with A_bar, B_bar and x
+%% Run with A_bar, B_bar and x
 figure;
-plot(V1(:,1:5))
+plot(U1(:,1:5))
+title('First 5 modes of SVD')
 
 % Initial condition (last entries of training data)
 y_hat_0 = zeros(q*m,1);
@@ -169,7 +170,7 @@ plot((D + t(N-N_test-N_train)).*[1, 1], ylim, 'r');
 plot(t(N-N_test-N_train).*[1,1], ylim, 'k');
 plot(t(N-N_test).*[1,1], ylim, 'k');
 title('Training and Testing data vs Model');
-legend('','','','','','', 'x hat','z hat','theta hat', 'x hat bar','z hat bar','theta hat bar');
+% legend('','','','','','', 'x hat','z hat','theta hat', 'x hat bar','z hat bar','theta hat bar');
 hold off;
 
 function A = stabilise(A_unstable,max_iterations)
@@ -180,19 +181,13 @@ function A = stabilise(A_unstable,max_iterations)
     while (sum(abs(eig(A)) > 1) ~= 0)       
         [Ve,De] = eig(A);
         unstable = abs(De)>1; % indexes of unstable eigenvalues
-        De(unstable) = De(unstable)./abs(De(unstable)) - 10^(-12 + count*3); % Normalize all unstable eigenvalues (set abs(eig) = 1)
+        De(unstable) = De(unstable)./abs(De(unstable)) - 10^(-14 + count*2); % Normalize all unstable eigenvalues (set abs(eig) = 1)
         A = Ve*De/(Ve); % New A with margininally stable eigenvalues
         A = real(A);
         count = count+1;
         if(count > max_iterations)
-            'max_iterations'
             break
         end
     end
 
-    if (sum(abs(eig(A)) > 1) ~= 0) % If eigenvalues are still unstable
-        error('Eigenvalues are unstable'); % Exit this p loop if still unstable
-    end
-    count
 end
-

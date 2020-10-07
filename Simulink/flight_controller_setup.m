@@ -18,12 +18,15 @@ tau = 0.07; % Motor time constant
 % Mixing Matrix
 MM = [-1, 1;
        1, 1]; % [T1; T2] = MM*[delta_E; delta_T]
-   
+
+% Forgetting factor
+lambda = 0.985; % Exponential forgetting factor of moving average to smooth out spikes in input for SVD performance
+
 % Way points
 num_waypoints = 100; % Number of waypoints included in command
 waypoints = table('Size', [(num_waypoints+1)*2, 3], 'VariableTypes', ["double", "double", "double"]);
 waypoints.Properties.VariableNames = {'point_time', 'x_coord', 'z_coord'};
-point_time_interval = 10; % (s) time interval between points
+point_time_interval = 4; % (s) time interval between points
 
 x_coord = 0;
 z_coord = -5;
