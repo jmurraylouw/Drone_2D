@@ -24,7 +24,7 @@ lambda = 0.985; % Exponential forgetting factor of moving average to smooth out 
 
 % Way points
 num_waypoints = 100; % Number of waypoints included in command
-point_time_interval = 4; % (s) time interval between points
+point_time_interval = 6; % Initial interval between commands
 
 waypoints = table('Size', [(num_waypoints+1)*2, 3], 'VariableTypes', ["double", "double", "double"]);
 waypoints.Properties.VariableNames = {'point_time', 'x_coord', 'z_coord'};
@@ -32,22 +32,25 @@ waypoints.Properties.VariableNames = {'point_time', 'x_coord', 'z_coord'};
 x_coord = 0;
 z_coord = -5;
 waypoints(1,:) = table(0,                   x_coord, z_coord); % Initial point
-waypoints(2,:) = table(point_time_interval, x_coord, z_coord); % Initial point
+waypoints(2,:) = table(point_time_interval, x_coord, z_coord); % Initial point for 6 seconds
 
-x_min = -10; x_max = 10; % minimum and maximum coordinates for waypoints
-z_min = -25; z_max = -5;
+x_min        = -10;     x_max        = 10; % (m) minimum and maximum coordinates for waypoints
+z_min        = -25;     z_max        = -5;
+interval_min = 2;       interval_max = 8;  % (s) minimum and maximum time interval between commands
 
+point_time = point_time_interval;
 rng(0); % Initialise random number generator for repeatability
 for i = 1:num_waypoints
-    point_time = point_time_interval*i;
-    waypoints(2*i,  :) = table(point_time_interval*i, x_coord, z_coord); % Previous point
-    
+    point_time_interval = (interval_max - interval_min).*rand() + interval_min; % (s) random time interval between commands
+    point_time = point_time + point_time_interval;
+
+    waypoints(2*i,  :) = table(point_time, x_coord, z_coord); % Previous point    
     x_coord    = (x_max - x_min).*rand() + x_min; % x coordinate of next waypoint
     z_coord    = (z_max - z_min).*rand() + z_min; % z coordinate of next waypoint   
-    waypoints(2*i+1,:) = table(point_time_interval*i, x_coord, z_coord); % Next point
+    waypoints(2*i+1,:) = table(point_time, x_coord, z_coord); % Next point
 end
 i = i+1;
-waypoints(2*i,  :) = table(point_time_interval*i, x_coord, z_coord); % Add time to reach final point
+waypoints(2*i,  :) = table(point_time+interval_max, x_coord, z_coord); % Add time to reach final point
 
 waypoints_ts = timeseries([waypoints.x_coord, waypoints.z_coord], waypoints.point_time); % timeseries object for From Workspace block
 

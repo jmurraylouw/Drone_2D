@@ -64,7 +64,8 @@ Qz = -(T1 + T2)*cos(theta) - 0.5*rho*dz*abs(dz)*C_Dz; % NB: z is down
 % Non-conservative Torques
 % ?? no aerodynamic drag on rotation?
 Qtheta = T2*r - T1*r; % Torques caused by rotor forces
-Qbeta  = -cbeta*dbeta; % Torques caused air damping on rotation of cable
+% Qbeta  = -cbeta*dbeta; % Torques caused air damping on rotation of cable
+Qbeta = 0; % try no damping
 
 % Lagrangian equations
 eq_x     = euler_lag(L, x, Qx, t); 
@@ -78,7 +79,7 @@ syms ddx ddz ddtheta ddbeta
 dstates  = [dx;  dz;  dtheta;  dbeta];
 ddstates = [ddx;  ddz;  ddtheta;  ddbeta];
 
-eqns = [eq_x; eq_z; eq_theta; eq_beta]; % VEquations to solve with
+eqns = [eq_x; eq_z; eq_theta; eq_beta]; % Equations to solve with
 
 % Substitute symbols into derivatives
 old = [diff(states,t); diff(states,t,t)];
@@ -112,5 +113,4 @@ for i = 1:n/2
     pretty(ddstates(i))
     disp("-------------------------------")
 end
-
 

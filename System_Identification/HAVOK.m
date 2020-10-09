@@ -1,7 +1,7 @@
 %% Implentation of Hankel Alternative View Of Koopman for 2D Drone
 % close all;
 
-simulation_data_file = 'No_payload_data_3';
+% simulation_data_file = 'No_payload_data_5';
 load(['Data/', simulation_data_file, '.mat']) % Load simulation data
 
 % Extract data
@@ -16,7 +16,7 @@ t       = out.tout'; % Time
 u_data  = u_data - u_bar; % Adjust for unmeasured input
 
 % Testing data - Last 50 s is for testing and one sample overlaps training 
-% N_test = 5000; % Num of data samples for testing
+% N_test = 2000; % Num of data samples for testing
 x_test = x_data(:,end-N_test+1:end);
 y_test = y_data(:,end-N_test+1:end); % One sample of testing data overlaps for initial condition
 u_test = u_data(:,end-N_test+1:end);
@@ -36,7 +36,7 @@ rng(1); % Repeatable random numbers
 y_data_noise = y_data + sigma*randn(size(y_data));
 
 % Training data - Last sample of training is first sample of testing
-% N_train = 5000; % Number of sampels in training data
+N_train = 8000; % Number of sampels in training data
 y_train = y_data_noise(:,end-N_test-N_train+2:end-N_test+1); % Use noisy data
 u_train = u_data(:,end-N_test-N_train+2:end-N_test+1);
 t_train = t(:,end-N_test-N_train+2:end-N_test+1);
