@@ -1,56 +1,56 @@
 %% Implentation of Hankel Alternative View Of Koopman for 2D Drone
 % close all;
-
-% simulation_data_file = 'No_payload_data_5';
-load(['Data/', simulation_data_file, '.mat']) % Load simulation data
-
-% Extract data
-u_data  = out.F_r.Data';
-x_data  = out.x.Data';
-y_data  = x_data([1,2,3],:); % Measurement data (x, z, theta)
-t       = out.tout'; % Time
-
-% Adjust for constant disturbance / mean control values
+% 
+% % simulation_data_file = 'No_payload_data_5';
+% load(['Data/', simulation_data_file, '.mat']) % Load simulation data
+% 
+% % Extract data
+% u_data  = out.F_r.Data';
+% x_data  = out.x.Data';
+% y_data  = x_data([1,2,3],:); % Measurement data (x, z, theta)
+% t       = out.tout'; % Time
+% 
+% % Adjust for constant disturbance / mean control values
 % u_bar = mean(u_data,2); % Input needed to keep at a fixed point
-% u_bar = [0; 4.5*9.81];
-u_data  = u_data - u_bar; % Adjust for unmeasured input
+% % u_bar = [0; 4.5*9.81];
+% u_data  = u_data - u_bar; % Adjust for unmeasured input
+% 
+% % Testing data - Last 50 s is for testing and one sample overlaps training 
+% % N_test = 2000; % Num of data samples for testing
+% x_test = x_data(:,end-N_test+1:end);
+% y_test = y_data(:,end-N_test+1:end); % One sample of testing data overlaps for initial condition
+% u_test = u_data(:,end-N_test+1:end);
+% t_test = t(:,end-N_test+1:end);
+% 
+% % Data dimentions
+% n = size(x_data,1); % number of states
+% m = size(y_data,1); % number of measurements
+% l = size(u_data,1); % number of inputs
+% Ts = t(2)-t(1);     % Sample time of data
+% N  = length(t);     % Number of data samples
+% 
+% % Add noise
+% rng('default');
+% rng(1); % Repeatable random numbers
+% % sigma = 0.001; % Noise standard deviation
+% y_data_noise = y_data + sigma*randn(size(y_data));
+% 
+% % Training data - Last sample of training is first sample of testing
+% % N_train = 8000; % Number of sampels in training data
+% y_train = y_data_noise(:,end-N_test-N_train+2:end-N_test+1); % Use noisy data
+% u_train = u_data(:,end-N_test-N_train+2:end-N_test+1);
+% t_train = t(:,end-N_test-N_train+2:end-N_test+1);
+% 
+% % Read previous results
+% sig_str = strrep(num2str(sigma),'.','_'); % Convert sigma value to string
+% results_file = ['Data/havok_results_', simulation_data_file, '_sig=', sig_str, '.mat'];
 
-% Testing data - Last 50 s is for testing and one sample overlaps training 
-% N_test = 2000; % Num of data samples for testing
-x_test = x_data(:,end-N_test+1:end);
-y_test = y_data(:,end-N_test+1:end); % One sample of testing data overlaps for initial condition
-u_test = u_data(:,end-N_test+1:end);
-t_test = t(:,end-N_test+1:end);
-
-% Data dimentions
-n = size(x_data,1); % number of states
-m = size(y_data,1); % number of measurements
-l = size(u_data,1); % number of inputs
-Ts = t(2)-t(1);     % Sample time of data
-N  = length(t);     % Number of data samples
-
-% Add noise
-rng('default');
-rng(1); % Repeatable random numbers
-% sigma = 0.001; % Noise standard deviation
-y_data_noise = y_data + sigma*randn(size(y_data));
-
-% Training data - Last sample of training is first sample of testing
-N_train = 8000; % Number of sampels in training data
-y_train = y_data_noise(:,end-N_test-N_train+2:end-N_test+1); % Use noisy data
-u_train = u_data(:,end-N_test-N_train+2:end-N_test+1);
-t_train = t(:,end-N_test-N_train+2:end-N_test+1);
-
-% Read previous results
-sig_str = strrep(num2str(sigma),'.','_'); % Convert sigma value to string
-results_file = ['Data/havok_results_', simulation_data_file, '_sig=', sig_str, '.mat'];
-
-try
-    load(results_file);
-    results(~results.q,:) = []; % remove empty rows
-catch
-    disp('No saved results file')  
-end
+% try
+%     load(results_file);
+%     results(~results.q,:) = []; % remove empty rows
+% catch
+%     disp('No saved results file')  
+% end
 
 % Parameters
 best_row = find(results.MAE_mean == min(results.MAE_mean));

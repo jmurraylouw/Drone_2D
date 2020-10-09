@@ -20,7 +20,7 @@ q_search = q_min:q_increment:q_max; % List of q parameters to search in
 % p_search defined before p for loop
 
 % Extract data
-simulation_data_file = 'No_payload_data_5';
+simulation_data_file = 'No_payload_data_4';
 load(['Data/', simulation_data_file, '.mat']) % Load simulation data
 
 u_data  = out.F_r.Data';
