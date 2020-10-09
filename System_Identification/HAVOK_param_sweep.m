@@ -8,7 +8,7 @@ clear all;
 total_timer = tic; % Start timer for this script
 
 % Search space
-q_min = 30; % Min value of q in grid search
+q_min = 50; % Min value of q in grid search
 q_max = 100; % Max value of q in grid search
 q_increment = 2; % Increment value of q in grid search
 
@@ -20,7 +20,7 @@ q_search = q_min:q_increment:q_max; % List of q parameters to search in
 % p_search defined before p for loop
 
 % Extract data
-simulation_data_file = 'No_payload_data_3';
+simulation_data_file = 'No_payload_data_5';
 load(['Data/', simulation_data_file, '.mat']) % Load simulation data
 
 u_data  = out.F_r.Data';
@@ -55,6 +55,7 @@ sigma = 0.001; % Noise standard deviation
 y_data_noise = y_data + sigma*randn(size(y_data));
 
 % Training data - Last sample of training is first sample of testing
+% ??? later add N_train to results table being saved
 N_train = 7000; % Number of sampels in training data x
 y_train = y_data_noise(:,end-N_test-N_train+2:end-N_test+1); % Use noisy data
 u_train = u_data(:,end-N_test-N_train+2:end-N_test+1);
