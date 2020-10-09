@@ -89,10 +89,13 @@ Y1 = Y(:, 1:end-1);
 
 YU = [Y1; Upsilon(:,1:end-1)]; % Combined matrix of Y and U, above and below
 AB = Y2*pinv(YU); % combined A and B matrix, side by side
-A  = AB(:,1:q*m); % Extract A matrix
-B  = AB(:,(q*m+1):end);
+A_hat  = AB(:,1:q*m); % Extract A matrix
+B_hat  = AB(:,(q*m+1):end);
 
-A
+A_hat % Estimated discrete A matrix of system
+B_hat % Estimated discrete B matrix of system
+%%
+dmd_sys = ss(A_hat,B_hat,eye(3),zeros(3,2),Ts);
 
 %% Run with A and x
 
@@ -106,7 +109,7 @@ end
 Y_hat = zeros(length(y_hat_0),N_test); % Empty estimated Y
 Y_hat(:,1) = y_hat_0; % Initial condition
 for k = 1:N_test-1
-    Y_hat(:,k+1) = A*Y_hat(:,k) + B*u_test(:,k);
+    Y_hat(:,k+1) = A_hat*Y_hat(:,k) + B_hat*u_test(:,k);
 end
 
 y_hat = Y_hat(end-m+1:end, :); % Extract only non-delay time series (last m rows)
@@ -130,6 +133,46 @@ plot(t(N-N_test).*[1,1], ylim, 'k');
 title('Training and Testing data vs Model');
 % legend('','','','','','', 'x hat','z hat','theta hat', 'x hat bar','z hat bar','theta hat bar');
 hold off;
+
+%% Way points
+num_waypoints = 100; % Number of waypoints included in command
+point_time_interval = 6; % Initial interval between commands
+
+waypoints = table('Size', [(num_waypoints+1)*2, 4], 'VariableTypes', ["double", "double", "double", "double"]);
+waypoints.Properties.VariableNames = {'point_time', 'x_coord', 'z_coord' , 'th_coord'};
+
+x_coord = 0;
+z_coord = -5;
+th_coord = 0;
+
+waypoints(1,:) = table(0,                   x_coord, z_coord, th_coord); % Initial point
+waypoints(2,:) = table(point_time_interval, x_coord, z_coord, th_coord); % Initial point for 6 seconds
+
+x_min        = -10;     x_max        = 10; % (m) minimum and maximum coordinates for waypoints
+z_min        = -25;     z_max        = -5;
+interval_min = 2;       interval_max = 8;  % (s) minimum and maximum time interval between commands
+
+point_time = point_time_interval;
+rng(0); % Initialise random number generator for repeatability
+for i = 1:num_waypoints
+    point_time_interval = (interval_max - interval_min).*rand() + interval_min; % (s) random time interval between commands
+    point_time = point_time + point_time_interval;
+
+    waypoints(2*i,  :) = table(point_time, x_coord, z_coord, th_coord); % Previous point    
+    x_coord    = (x_max - x_min).*rand() + x_min; % x coordinate of next waypoint
+    z_coord    = (z_max - z_min).*rand() + z_min; % z coordinate of next waypoint   
+    th_coord    = (x_max - x_min).*rand() + x_min; % theta coordinate of next waypoint
+    
+    waypoints(2*i+1,:) = table(point_time, x_coord, z_coord, th_coord); % Next point
+end
+i = i+1;
+waypoints(2*i,  :) = table(point_time+interval_max, x_coord, z_coord, th_coord); % Add time to reach final point
+
+waypoints_ts = timeseries([waypoints.x_coord, waypoints.z_coord, waypoints.th_coord], waypoints.point_time); % timeseries object for From Workspace block
+'done'
+
+%% Save data
+save('MPC/toy_model.mat', 'u_input', 'A_plant', 'B_plant', 'A_hat', 'B_hat')
 
 function A = stabilise(A_unstable,max_iterations)
     % If some eigenvalues are unstable due to machine tolerance,
