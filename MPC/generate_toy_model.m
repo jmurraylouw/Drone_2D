@@ -1,7 +1,13 @@
+load('MPC/toy_model.mat') % Previously saved params
+
 rng('default');
 rng(1); % Repeatable random numbers
 rand_sys = rss(3,3,2);
 [A_plant, B_plant, ~, ~] = ssdata(rand_sys); % Continuous plant model
+
+C_plant = eye(3);
+D_plant = zeros(3,2);
+x0 = zeros(3,1);
 
 %% Implentation of HAVOK
 
@@ -33,7 +39,7 @@ N  = length(t);     % Number of data samples
 % Add noise
 rng('default');
 rng(1); % Repeatable random numbers
-% sigma = 0.001; % Noise standard deviation
+sigma = 0.001; % Noise standard deviation
 y_data_noise = y_data + sigma*randn(size(y_data));
 
 % Training data - Last sample of training is first sample of testing
@@ -43,15 +49,15 @@ u_train = u_data(:,end-N_test-N_train+2:end-N_test+1);
 t_train = t(:,end-N_test-N_train+2:end-N_test+1);
 
 % Parameters
-q = 1; % Override
+q = 2; % Override
 p = 1; % Override
 
 w = N_train - q + 1; % num columns of Hankel matrix
 D = (q-1)*Ts; % Delay duration (Dynamics in delay embedding)
 
 % Create Hankel matrix with measurements
-Y = zeros(q*m,w); % Augmented state with delay coordinates [Y(k); Y(k-1*tau); Y(k-2*tau); ...]
-for row = 0:q-1 % Add delay coordinates
+Y = zeros(q*m,w); % Augmented state with delay coordinates [..., Y(k-2), Y(k-1), Y(k)]
+for row = q-1:-1:0 % Add delay coordinates
     Y(row*m+1:(row+1)*m, :) = y_train(:, row + (0:w-1) + 1);
 end
 
@@ -95,7 +101,7 @@ B_hat  = AB(:,(q*m+1):end);
 A_hat % Estimated discrete A matrix of system
 B_hat % Estimated discrete B matrix of system
 %%
-dmd_sys = ss(A_hat,B_hat,eye(3),zeros(3,2),Ts);
+dmd_sys = ss(A_hat,B_hat,eye(q*m),zeros(q*m,l),Ts);
 
 %% Run with A and x
 
@@ -116,9 +122,6 @@ y_hat = Y_hat(end-m+1:end, :); % Extract only non-delay time series (last m rows
 
 % Vector of Mean Absolute Error on testing data
 MAE = sum(abs(y_hat - y_test), 2)./N_test % For each measured state
-
-% Compare MAE and MAE_til
-MAE_error_percent = (MAE - MAE_bar)./MAE_bar*100
 
 %% Plot data vs model
 figure;
@@ -172,7 +175,8 @@ waypoints_ts = timeseries([waypoints.x_coord, waypoints.z_coord, waypoints.th_co
 'done'
 
 %% Save data
-save('MPC/toy_model.mat', 'u_input', 'A_plant', 'B_plant', 'A_hat', 'B_hat')
+save('MPC/toy_model.mat', 'u_input', 'out', 'waypoints_ts', 'mpc1')
+% 'A_hat', 'B_hat'
 
 function A = stabilise(A_unstable,max_iterations)
     % If some eigenvalues are unstable due to machine tolerance,

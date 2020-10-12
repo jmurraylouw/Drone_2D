@@ -70,6 +70,13 @@ for row = 0:q-1 % Add delay coordinates
     Y(row*m+1:(row+1)*m, :) = y_train(:, row + (0:w-1) + 1);
 end
 
+% Y = zeros(q*m,w); % Augmented state with delay coordinates [..., Y(k-2), Y(k-1), Y(k)]
+% 
+% for row = 0:q-1 % Add delay coordinates
+%     Y((end - m*(row+1) + 1):(end - m*row), :) = y_train(:, row + (1:w));
+% end
+
+
 Upsilon = u_train(:, q:end); % Leave out last time step to match V_til_1
 YU_bar = [Y; Upsilon];
 
