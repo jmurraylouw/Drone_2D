@@ -1,4 +1,5 @@
-load('MPC/toy_model.mat') % Previously saved params
+load('MPC/toy_data.mat') % Simulation data of toy problem
+load('MPC/toy_model.mat')
 
 rng('default');
 rng(1); % Repeatable random numbers
@@ -112,70 +113,26 @@ D_hat = zeros(m_hat, l_hat);
 
 x0_hat = zeros(n_hat,1);
 
-%% Debug
-A_hat2 = A_hat;
-B_hat2 = B_hat;
-C_hat2 = C_hat;
-D_hat2 = D_hat;
-
 %% LTI system
 Ts_mpc = 0.1; % MPC sampling time
 
 dmd_sys = ss(A_hat,B_hat,eye(q*m),zeros(q*m,l),Ts); % LTI system
 dmd_sys = d2d(dmd_sys,Ts_mpc,'zoh'); % Resample to match MPC
 
-[A_hat,B_hat,C2,D2,Ts] = ssdata(dmd_sys) % Extract new matrixes
-dmd_sys = ss(A_hat,B_hat,eye(q*m),zeros(q*m,l),Ts_mpc); % LTI system with new Ts 
+[A_hat2,B_hat2,C_hat2,D_hat2,Ts] = ssdata(dmd_sys) % Extract resampled matrixes
+dmd_sys = ss(A_hat,B_hat,C_hat2,D_hat2,Ts_mpc); % LTI system with new Ts 
 
 %% MPC object
-
+old_status = mpcverbosity('off');
 dmd_sys.InputGroup.MV = 2;
 dmd_sys.OutputGroup.MO = 6;
-MPCobj = mpc(dmd_sys,Ts_mpc)
-% dmd_sys.InputName = {'T_c','C_A_i'};
-% dmd_sys.OutputName = {'T','C_A'};
-% dmd_sys.StateName = {'C_A','T'};
+MPCobj = mpc(dmd_sys,Ts_mpc);
 
-%% Nominal operating conditions
+%% Nominal operating conditions for AMPC block
 U_nom = u_bar;
 X_nom = zeros(n_hat,1);
 Y_nom = zeros(m_hat,1);
 DX_nom = zeros(n_hat,1);
-
-stop
-%% Run with A and x
-
-% Initial condition
-y_hat_0 = zeros(q*m,1);
-for row = 0:q-1 % First column of spaced Hankel matrix
-    y_hat_0(row*m+1:(row+1)*m, 1) = y_train(:, end - ((q-1)+1) + row + 1);
-end
-
-% Run model
-Y_hat = zeros(length(y_hat_0),N_test); % Empty estimated Y
-Y_hat(:,1) = y_hat_0; % Initial condition
-for k = 1:N_test-1
-    Y_hat(:,k+1) = A_hat*Y_hat(:,k) + B_hat*u_test(:,k);
-end
-
-y_hat = Y_hat(end-m+1:end, :); % Extract only non-delay time series (last m rows)
-
-% Vector of Mean Absolute Error on testing data
-MAE = sum(abs(y_hat - y_test), 2)./N_test % For each measured state
-
-%% Plot data vs model
-figure;
-plot(t_train, y_train);
-hold on;
-plot(t_test, y_test);
-
-plot(t_test, y_hat, '--', 'LineWidth', 1); % Plot only non-delay coordinate
-plot((D + t(N-N_test-N_train)).*[1, 1], ylim, 'r');
-plot(t(N-N_test-N_train).*[1,1], ylim, 'k');
-plot(t(N-N_test).*[1,1], ylim, 'k');
-title('Training and Testing data vs Model');
-% legend('','','','','','', 'x hat','z hat','theta hat', 'x hat bar','z hat bar','theta hat bar');
-hold off;
 
 %% Way points
 num_waypoints = 100; % Number of waypoints included in command
@@ -212,12 +169,51 @@ i = i+1;
 waypoints(2*i,  :) = table(point_time+interval_max, x_coord, z_coord, th_coord); % Add time to reach final point
 
 waypoints_ts = timeseries([waypoints.x_coord, waypoints.z_coord, waypoints.th_coord], waypoints.point_time); % timeseries object for From Workspace block
-'done'
+
+
+%% Run with A and x
+run_and_plot = 0;
+if run_and_plot
+    
+    % Initial condition
+    y_hat_0 = zeros(q*m,1);
+    for row = 0:q-1 % First column of spaced Hankel matrix
+        y_hat_0(row*m+1:(row+1)*m, 1) = y_train(:, end - ((q-1)+1) + row + 1);
+    end
+
+    % Run model
+    Y_hat = zeros(length(y_hat_0),N_test); % Empty estimated Y
+    Y_hat(:,1) = y_hat_0; % Initial condition
+    for k = 1:N_test-1
+        Y_hat(:,k+1) = A_hat*Y_hat(:,k) + B_hat*u_test(:,k);
+    end
+
+    y_hat = Y_hat(end-m+1:end, :); % Extract only non-delay time series (last m rows)
+
+    % Vector of Mean Absolute Error on testing data
+    MAE = sum(abs(y_hat - y_test), 2)./N_test % For each measured state
+
+    %% Plot data vs model
+    figure;
+    plot(t_train, y_train);
+    hold on;
+    plot(t_test, y_test);
+
+    plot(t_test, y_hat, '--', 'LineWidth', 1); % Plot only non-delay coordinate
+    plot((D + t(N-N_test-N_train)).*[1, 1], ylim, 'r');
+    plot(t(N-N_test-N_train).*[1,1], ylim, 'k');
+    plot(t(N-N_test).*[1,1], ylim, 'k');
+    title('Training and Testing data vs Model');
+    % legend('','','','','','', 'x hat','z hat','theta hat', 'x hat bar','z hat bar','theta hat bar');
+    hold off;
+end % run_and_plot
+
 
 %% Save data
-save('MPC/toy_model.mat', 'u_input', 'out', 'waypoints_ts', ...
-'A_hat', 'B_hat', 'C_hat', 'D_hat', 'x0_hat', ...
-'mpc1')
+save('MPC/toy_model.mat', 'u_input', 'waypoints_ts', ...
+'A_hat',   'B_hat',   'C_hat',   'D_hat',   'x0_hat', ...
+'A_plant', 'B_plant', 'C_plant', 'D_plant', 'x0', ...
+'MPCobj')
 
 function A = stabilise(A_unstable,max_iterations)
     % If some eigenvalues are unstable due to machine tolerance,
