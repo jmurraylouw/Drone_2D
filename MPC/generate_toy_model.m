@@ -56,8 +56,8 @@ w = N_train - q + 1; % num columns of Hankel matrix
 D = (q-1)*Ts; % Delay duration (Dynamics in delay embedding)
 
 % Create Hankel matrix with measurements
-Y = zeros(q*m,w); % Augmented state with delay coordinates [..., Y(k-2), Y(k-1), Y(k)]
-for row = q-1:-1:0 % Add delay coordinates
+Y = zeros(q*m,w); % Augmented state with delay coordinates [...; Y(k-2); Y(k-1); Y(k)]
+for row = 0:q-1 % Add delay coordinates
     Y(row*m+1:(row+1)*m, :) = y_train(:, row + (0:w-1) + 1);
 end
 
