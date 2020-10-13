@@ -112,13 +112,19 @@ D_hat = zeros(m_hat, l_hat);
 
 x0_hat = zeros(n_hat,1);
 
+%% Debug
+A_hat2 = A_hat;
+B_hat2 = B_hat;
+C_hat2 = C_hat;
+D_hat2 = D_hat;
+
 %% LTI system
 Ts_mpc = 0.1; % MPC sampling time
 
 dmd_sys = ss(A_hat,B_hat,eye(q*m),zeros(q*m,l),Ts); % LTI system
-dmd_sys = d2d(dmd_sys,Ts_mpc,'tustin'); % Resample to match MPC
+dmd_sys = d2d(dmd_sys,Ts_mpc,'zoh'); % Resample to match MPC
 
-[A_hat,B_hat,~,~,Ts] = ssdata(dmd_sys); % Extract new matrixes
+[A_hat,B_hat,C2,D2,Ts] = ssdata(dmd_sys) % Extract new matrixes
 dmd_sys = ss(A_hat,B_hat,eye(q*m),zeros(q*m,l),Ts_mpc); % LTI system with new Ts 
 
 %% MPC object
