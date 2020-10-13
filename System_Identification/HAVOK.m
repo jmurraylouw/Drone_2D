@@ -65,17 +65,15 @@ w = N_train - q + 1; % num columns of Hankel matrix
 D = (q-1)*Ts; % Delay duration (Dynamics in delay embedding)
 
 % Create Hankel matrix with measurements
-Y = zeros(q*m,w); % Augmented state with delay coordinates [Y(k); Y(k-1*tau); Y(k-2*tau); ...]
-for row = 0:q-1 % Add delay coordinates
-    Y(row*m+1:(row+1)*m, :) = y_train(:, row + (0:w-1) + 1);
-end
-
-% Y = zeros(q*m,w); % Augmented state with delay coordinates [..., Y(k-2), Y(k-1), Y(k)]
-% 
+% Y = zeros(q*m,w); % Augmented state with delay coordinates [Y(k); Y(k-1*tau); Y(k-2*tau); ...]
 % for row = 0:q-1 % Add delay coordinates
-%     Y((end - m*(row+1) + 1):(end - m*row), :) = y_train(:, row + (1:w));
+%     Y(row*m+1:(row+1)*m, :) = y_train(:, row + (0:w-1) + 1);
 % end
 
+Y = zeros(q*m,w); % Augmented state with delay coordinates [..., Y(k-2), Y(k-1), Y(k)]
+for row = 0:q-1 % Add delay coordinates
+    Y((end - m*(row+1) + 1):(end - m*row), :) = y_train(:, row + (1:w));
+end
 
 Upsilon = u_train(:, q:end); % Leave out last time step to match V_til_1
 YU_bar = [Y; Upsilon];
@@ -124,9 +122,14 @@ plot(U1(:,1:5))
 title('First 5 modes of SVD')
 
 % Initial condition (last entries of training data)
+% y_hat_0 = zeros(q*m,1);
+% for row = 0:q-1 % First column of spaced Hankel matrix
+%     y_hat_0(row*m+1:(row+1)*m, 1) = y_train(:, end - ((q-1)+1) + row + 1);
+% end
+
 y_hat_0 = zeros(q*m,1);
-for row = 0:q-1 % First column of spaced Hankel matrix
-    y_hat_0(row*m+1:(row+1)*m, 1) = y_train(:, end - ((q-1)+1) + row + 1);
+for row = 0:q-1 % Add delay coordinates
+    y_hat_0((end - m*(row+1) + 1):(end - m*row), 1) = y_train(:, end - ((q-1)+1) + row + 1);
 end
 
 % Run model
@@ -136,7 +139,8 @@ for k = 1:N_test-1
     Y_hat(:,k+1) = A_bar*Y_hat(:,k) + B_bar*u_test(:,k);
 end
 
-y_hat_bar = Y_hat(end-m+1:end, :); % Extract only non-delay time series (last m rows)
+% y_hat_bar = Y_hat(end-m+1:end, :); % Extract only non-delay time series (last m rows)
+y_hat_bar = Y_hat(1:m, :); % Extract only non-delay time series (first m rows)
 
 % Vector of Mean Absolute Error on testing data
 MAE_bar = sum(abs(y_hat_bar - y_test), 2)./N_test % For each measured state
@@ -145,11 +149,16 @@ MAE_bar = sum(abs(y_hat_bar - y_test), 2)./N_test % For each measured state
 %% Run with A and x
 
 % Initial condition
-y_hat_0 = zeros(q*m,1);
-for row = 0:q-1 % First column of spaced Hankel matrix
-    y_hat_0(row*m+1:(row+1)*m, 1) = y_train(:, end - ((q-1)+1) + row + 1);
-end
+% y_hat_0 = zeros(q*m,1);
+% for row = 0:q-1 % First column of spaced Hankel matrix
+%     y_hat_0(row*m+1:(row+1)*m, 1) = y_train(:, end - ((q-1)+1) + row + 1);
+% end
 
+y_hat_0 = zeros(q*m,1);
+for row = 0:q-1 % Add delay coordinates
+    y_hat_0((end - m*(row+1) + 1):(end - m*row), 1) = y_train(:, end - ((q-1)+1) + row + 1);
+end
+            
 % Run model
 Y_hat = zeros(length(y_hat_0),N_test); % Empty estimated Y
 Y_hat(:,1) = y_hat_0; % Initial condition
@@ -157,7 +166,8 @@ for k = 1:N_test-1
     Y_hat(:,k+1) = A*Y_hat(:,k) + B*u_test(:,k);
 end
 
-y_hat = Y_hat(end-m+1:end, :); % Extract only non-delay time series (last m rows)
+% y_hat = Y_hat(end-m+1:end, :); % Extract only non-delay time series (last m rows)
+y_hat = Y_hat(1:m, :); % Extract only non-delay time series (first m rows)
 
 % Vector of Mean Absolute Error on testing data
 MAE = sum(abs(y_hat - y_test), 2)./N_test % For each measured state
