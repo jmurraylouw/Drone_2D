@@ -12,7 +12,7 @@ t       = out.tout'; % Time
 
 % Adjust for constant disturbance / mean control values
 % u_bar = mean(u_data,2); % Input needed to keep at a fixed point
-% u_bar = [0; 4.5*9.81];
+% u_bar = [0; -4.5*9.81];
 u_data  = u_data - u_bar; % Adjust for unmeasured input
 
 % Testing data - Last 50 s is for testing and one sample overlaps training 
@@ -77,7 +77,7 @@ YU_bar = [Y; Upsilon];
 [U1,S1,V1] = svd(YU_bar, 'econ');
 figure, semilogy(diag(S1), 'x'), hold on;
 title('Singular values of Omega, showing p truncation')
-plot(p,S1(p,p), 'ro'), hold off;
+plot(p, S1(p,p), 'ro'), hold off;
 
 % Truncate SVD matrixes
 U_tilde = U1(:, 1:p); 

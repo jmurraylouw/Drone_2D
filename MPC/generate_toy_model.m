@@ -19,8 +19,10 @@ t       = out.tout'; % Time
 
 % Adjust for constant disturbance / mean control values
 % u_bar = mean(u_data,2); % Input needed to keep at a fixed point
-% u_bar = [0; 4.5*9.81];
+% u_bar = [0; -4.5*9.81];
 % u_data  = u_data - u_bar; % Adjust for unmeasured input
+u_bar = [0; 0];
+u_data  = u_data - u_bar; % Adjust for unmeasured input
 
 % Testing data - Last 50 s is for testing and one sample overlaps training 
 N_test = 2000; % Num of data samples for testing
@@ -100,9 +102,41 @@ B_hat  = AB(:,(q*m+1):end);
 
 A_hat % Estimated discrete A matrix of system
 B_hat % Estimated discrete B matrix of system
-%%
-dmd_sys = ss(A_hat,B_hat,eye(q*m),zeros(q*m,l),Ts);
 
+n_hat = size(A_hat, 1);
+l_hat = l;
+m_hat = n_hat;
+
+C_hat = eye(m_hat);
+D_hat = zeros(m_hat, l_hat);
+
+x0_hat = zeros(n_hat,1);
+
+%% LTI system
+Ts_mpc = 0.1; % MPC sampling time
+
+dmd_sys = ss(A_hat,B_hat,eye(q*m),zeros(q*m,l),Ts); % LTI system
+dmd_sys = d2d(dmd_sys,Ts_mpc,'tustin'); % Resample to match MPC
+
+[A_hat,B_hat,~,~,Ts] = ssdata(dmd_sys); % Extract new matrixes
+dmd_sys = ss(A_hat,B_hat,eye(q*m),zeros(q*m,l),Ts_mpc); % LTI system with new Ts 
+
+%% MPC object
+
+dmd_sys.InputGroup.MV = 2;
+dmd_sys.OutputGroup.MO = 6;
+MPCobj = mpc(dmd_sys,Ts_mpc)
+% dmd_sys.InputName = {'T_c','C_A_i'};
+% dmd_sys.OutputName = {'T','C_A'};
+% dmd_sys.StateName = {'C_A','T'};
+
+%% Nominal operating conditions
+U_nom = u_bar;
+X_nom = zeros(n_hat,1);
+Y_nom = zeros(m_hat,1);
+DX_nom = zeros(n_hat,1);
+
+stop
 %% Run with A and x
 
 % Initial condition
@@ -175,8 +209,9 @@ waypoints_ts = timeseries([waypoints.x_coord, waypoints.z_coord, waypoints.th_co
 'done'
 
 %% Save data
-save('MPC/toy_model.mat', 'u_input', 'out', 'waypoints_ts', 'mpc1')
-% 'A_hat', 'B_hat'
+save('MPC/toy_model.mat', 'u_input', 'out', 'waypoints_ts', ...
+'A_hat', 'B_hat', 'C_hat', 'D_hat', 'x0_hat', ...
+'mpc1')
 
 function A = stabilise(A_unstable,max_iterations)
     % If some eigenvalues are unstable due to machine tolerance,
