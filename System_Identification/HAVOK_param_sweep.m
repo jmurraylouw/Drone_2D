@@ -3,7 +3,7 @@
 % Saves all the results for different parameter combinations
 
 close all;
-% clear all;
+clear all;
 
 total_timer = tic; % Start timer for this script
 
