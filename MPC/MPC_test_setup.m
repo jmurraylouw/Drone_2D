@@ -52,7 +52,7 @@ u_train = u_data(:,end-N_test-N_train+2:end-N_test+1);
 t_train = t(:,end-N_test-N_train+2:end-N_test+1);
 
 % Parameters
-q = 2; % Override
+q = 3; % Override
 p = 1; % Override
 
 w = N_train - q + 1; % num columns of Hankel matrix
