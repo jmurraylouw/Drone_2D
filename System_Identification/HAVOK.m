@@ -2,7 +2,7 @@
 % close all;
 
 % simulation_data_file = 'No_payload_data_5';
-load(['Data/', simulation_data_file, '.mat']) % Load simulation data
+% load(['Data/', simulation_data_file, '.mat']) % Load simulation data
 
 % Extract data
 u_data  = out.F_r.Data';
@@ -12,7 +12,7 @@ t       = out.tout'; % Time
 
 % Adjust for constant disturbance / mean control values
 % u_bar = mean(u_data,2); % Input needed to keep at a fixed point
-% u_bar = [0; -4.5*9.81];
+u_bar = [0; -4.5*9.81];
 u_data  = u_data - u_bar; % Adjust for unmeasured input
 
 % Testing data - Last 50 s is for testing and one sample overlaps training 

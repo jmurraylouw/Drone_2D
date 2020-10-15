@@ -1,6 +1,10 @@
 %% PID controllers
 load('Data/Drone_2D_control_params.mat'); % Load controller gain values
 
+% Parameters
+q = 90; % Override
+p = 33; % Override
+
 % Dimensions
 nx = 6; % Number of states
 ny = 3; % Number of measurements
@@ -73,7 +77,119 @@ waypoints_ts = timeseries([waypoints.x_coord, waypoints.z_coord], waypoints.poin
 % xlabel('x');
 % ylabel('z');
 
-%% LTI system
+%% Implentation of HAVOK
+% 
+% Extract data
+% u_data  = out.F_r.Data';
+% x_data  = out.x.Data';
+% y_data  = x_data(1:3,:);
+% t       = out.tout'; % Time
+% 
+% Adjust for constant disturbance / mean control values
+% % u_bar = mean(u_data,2); % Input needed to keep at a fixed point
+% u_bar = [0; M*g];
+% u_data  = u_data - u_bar; % Adjust for unmeasured input
+% 
+% Testing data - Last 50 s is for testing and one sample overlaps training 
+% N_test = 2000; % Num of data samples for testing
+% x_test = x_data(:,end-N_test+1:end);
+% y_test = y_data(:,end-N_test+1:end); % One sample of testing data overlaps for initial condition
+% u_test = u_data(:,end-N_test+1:end);
+% t_test = t(:,end-N_test+1:end);
+% 
+% Data dimentions
+% nx = size(x_data,1); % number of states
+% ny = size(y_data,1); % number of measurements
+% nu = size(u_data,1); % number of inputs
+% Ts = t(2)-t(1);     % Sample time of data
+% N  = length(t);     % Number of data samples
+% 
+% Add noise
+% rng('default');
+% rng(1); % Repeatable random numbers
+% sigma = 0.001; % Noise standard deviation
+% y_data_noise = y_data + sigma*randn(size(y_data));
+% 
+% Training data - Last sample of training is first sample of testing
+% N_train = 5000; % Number of sampels in training data
+% y_train = y_data_noise(:,end-N_test-N_train+2:end-N_test+1); % Use noisy data
+% u_train = u_data(:,end-N_test-N_train+2:end-N_test+1);
+% t_train = t(:,end-N_test-N_train+2:end-N_test+1);
+% 
+% 
+% w = N_train - q + 1; % num columns of Hankel matrix
+% D = (q-1)*Ts; % Delay duration (Dynamics in delay embedding)
+% 
+% Create Hankel matrix with measurements
+% Y = zeros(q*ny,w); % Augmented state with delay coordinates [...; Y(k-2); Y(k-1); Y(k)]
+% for row = 0:q-1 % Add delay coordinates
+%     Y(row*ny+1:(row+1)*ny, :) = y_train(:, row + (0:w-1) + 1);
+% end
+% 
+% Upsilon = u_train(:, q:end); % Leave out last time step to match V_til_1
+% YU_bar = [Y; Upsilon];
+% 
+% DMD of Y
+% Y2 = Y(:, 2:end  );
+% Y1 = Y(:, 1:end-1);
+% 
+% YU = [Y1; Upsilon(:,1:end-1)]; % Combined matrix of Y and U, above and below
+% AB = Y2*pinv(YU); % combined A and B matrix, side by side
+% A_hat  = AB(:,1:q*ny); % Extract A matrix
+% B_hat  = AB(:,(q*ny+1):end);
+% 
+% A_hat; % Estimated discrete A matrix of system
+% B_hat; % Estimated discrete B matrix of system
+% 
+% n_hat = size(A_hat, 1);
+% l_hat = nu;
+% m_hat = n_hat;
+% 
+% C_hat = eye(m_hat);
+% D_hat = zeros(m_hat, l_hat);
+% 
+% x0_hat = zeros(n_hat,1);
+% 
+% % Run with A and x
+% run_and_plot = 1;
+% if run_and_plot
+%     
+%     Initial condition
+%     y_hat_0 = zeros(q*ny,1);
+%     for row = 0:q-1 % First column of spaced Hankel matrix
+%         y_hat_0(row*ny+1:(row+1)*ny, 1) = y_train(:, end - ((q-1)+1) + row + 1);
+%     end
+% 
+%     Run model
+%     Y_hat = zeros(length(y_hat_0),N_test); % Empty estimated Y
+%     Y_hat(:,1) = y_hat_0; % Initial condition
+%     for k = 1:N_test-1
+%         Y_hat(:,k+1) = A_hat*Y_hat(:,k) + B_hat*u_test(:,k);
+%     end
+% 
+%     y_hat = Y_hat(end-ny+1:end, :); % Extract only non-delay time series (last m rows)
+% 
+%     Vector of Mean Absolute Error on testing data
+%     MAE = sum(abs(y_hat - y_test), 2)./N_test % For each measured state
+% 
+%     % Plot data vs model
+%     figure;
+%     plot(t_train, y_train);
+%     hold on;
+%     plot(t_test, y_test);
+% 
+%     plot(t_test, y_hat, '--', 'LineWidth', 1); % Plot only non-delay coordinate
+%     plot((D + t(N-N_test-N_train)).*[1, 1], ylim, 'r');
+%     plot(t(N-N_test-N_train).*[1,1], ylim, 'k');
+%     plot(t(N-N_test).*[1,1], ylim, 'k');
+%     title('Training and Testing data vs Model');
+%     legend('','','','','','', 'x hat','z hat','theta hat', 'x hat bar','z hat bar','theta hat bar');
+%     hold off;
+% end % run_and_plot
+% 
+% 
+% 
+% LTI system
 Ts_mpc = 0.1; % MPC sampling time
 
 dmd_sys = ss(A_hat,B_hat,eye(q*ny),zeros(q*ny,nu),Ts); % LTI system
@@ -82,7 +198,7 @@ dmd_sys = d2d(dmd_sys,Ts_mpc,'zoh'); % Resample to match MPC
 [A_hat2,B_hat2,C_hat2,D_hat2,Ts] = ssdata(dmd_sys); % Extract resampled matrixes
 dmd_sys = ss(A_hat,B_hat,C_hat2,D_hat2,Ts_mpc); % LTI system with new Ts 
 
-%% MPC object
+% MPC object
 Ts_mpc = 0.1; % Sample time of MPC (s)
 old_status = mpcverbosity('off'); % No display messages
 dmd_sys.InputGroup.MV = 2; % Munipulated Variable
@@ -91,16 +207,16 @@ dmd_sys.OutputGroup.MO = 6; % Measured Variable
 mpc_drone_2d = mpc(dmd_sys,Ts_mpc);
 mpc_drone_2d.Weights.OutputVariables = [zeros(1,(q-1)*ny), 1, 1, 0]; % Set weights of delay coordinates to 0, so they do not follow reference
 
-%% Nominal operating conditions for AMPC block
+% Nominal operating conditions for AMPC block
 U_nom = u_bar;
 X_nom = zeros(q*ny,1);
 Y_nom = zeros(q*ny,1);
 DX_nom = zeros(q*ny,1);
-
-
-
-
-
-
-
-
+% 
+% 
+% 
+% 
+% 
+% 
+% 
+% 

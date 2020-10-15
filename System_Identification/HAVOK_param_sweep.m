@@ -3,7 +3,7 @@
 % Saves all the results for different parameter combinations
 
 close all;
-clear all;
+% clear all;
 
 total_timer = tic; % Start timer for this script
 
@@ -21,7 +21,7 @@ q_search = q_min:q_increment:q_max; % List of q parameters to search in
 
 % Extract data
 simulation_data_file = 'No_payload_data_5';
-load(['Data/', simulation_data_file, '.mat']) % Load simulation data
+% load(['Data/', simulation_data_file, '.mat']) % Load simulation data
 
 u_data  = out.F_r.Data';
 x_data  = out.x.Data';
