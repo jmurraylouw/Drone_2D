@@ -42,9 +42,9 @@ u_test = u_data(:,end-N_test+1:end);
 t_test = t(:,end-N_test+1:end);
 
 % Data dimentions
-n = size(x_data,1); % number of states
-m = size(y_data,1); % number of measurements
-l = size(u_data,1); % number of inputs
+nx = size(x_data,1); % number of states
+ny = size(y_data,1); % number of measurements
+nu = size(u_data,1); % number of inputs
 Ts = t(2)-t(1);     % Sample time of data
 N  = length(t);     % Number of data samples
 
@@ -64,7 +64,7 @@ t_train = t(:,end-N_test-N_train+2:end-N_test+1);
 % Create empty results table
 VariableTypes = {'int16','int16','double'}; % id, q, p, MAE
 VariableNames = {'q', 'p', 'MAE_mean'};
-for i = 1:m % Mae column for each measured state
+for i = 1:ny % Mae column for each measured state
     VariableNames = [VariableNames, strcat('MAE_', num2str(i))];
     VariableTypes = [VariableTypes, 'double'];
 end
@@ -93,7 +93,7 @@ for q = q_search
         q
         tic;
         
-        p_max_new = min([p_max, q*m]); % Max p to avoid out of bounds 
+        p_max_new = min([p_max, q*ny]); % Max p to avoid out of bounds 
         p_search = p_min:p_increment:p_max_new; % List of p to search, for every q
         for p = p_search
             p_is_new = 1; % 1 = first time using this p this session
@@ -109,9 +109,9 @@ for q = q_search
                 D = (q-1)*Ts; % Delay duration (Dynamics in delay embedding)
 
                 % Create Hankel matrix with measurements
-                Y = zeros(q*m,w); % Augmented state with delay coordinates [... Y(k-2); Y(k-1); Y(k)]
+                Y = zeros(q*ny,w); % Augmented state with delay coordinates [... Y(k-2); Y(k-1); Y(k)]
                 for row = 0:q-1 % Add delay coordinates
-                    Y(row*m+1:(row+1)*m, :) = y_train(:, row + (0:w-1) + 1);
+                    Y(row*ny+1:(row+1)*ny, :) = y_train(:, row + (0:w-1) + 1);
                 end
                 
                 Upsilon = u_train(:, q:end); % Leave out last time step to match V_til_1
@@ -137,14 +137,14 @@ for q = q_search
             
             % convert to x coordinates
             AB_bar = (U_tilde*S_tilde)*AB_tilde*pinv(U_tilde*S_tilde);
-            A_bar = AB_bar(1:q*m, 1:q*m);
-            B_bar = AB_bar(1:q*m, q*m+1:end);            
+            A_bar = AB_bar(1:q*ny, 1:q*ny);
+            B_bar = AB_bar(1:q*ny, q*ny+1:end);            
 
             % Compare to testing data
             % Initial condition (last entries of training data)
-            y_hat_0 = zeros(q*m,1);
+            y_hat_0 = zeros(q*ny,1);
             for row = 0:q-1 % First column of spaced Hankel matrix
-                y_hat_0(row*m+1:(row+1)*m, 1) = y_train(:, end - ((q-1)+1) + row + 1);
+                y_hat_0(row*ny+1:(row+1)*ny, 1) = y_train(:, end - ((q-1)+1) + row + 1);
             end
 
             % Run model
@@ -154,7 +154,7 @@ for q = q_search
                 Y_hat(:,k+1) = A_bar*Y_hat(:,k) + B_bar*u_test(:,k);
             end
 
-            y_hat = Y_hat(end-m+1:end, :); % Extract only non-delay time series (last m rows)
+            y_hat = Y_hat(end-ny+1:end, :); % Extract only non-delay time series (last m rows)
             
             % Vector of Mean Absolute Error on testing data
             MAE = sum(abs(y_hat - y_test), 2)./N_test; % For each measured state
