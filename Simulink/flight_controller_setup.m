@@ -1,9 +1,22 @@
 %% PID controllers
 load('Data/Drone_2D_control_params.mat'); % Load controller gain values
 
-%% Initial conditions
-x0 = zeros(6,1); 
-u0 = [0; 0];
+% Dimensions
+nx = 6; % Number of states
+ny = 3; % Number of measurements
+nu = 2; % Number of inputs
+
+% Initial conditions
+x0 = zeros(nx,1); % Initial state
+y0 = zeros(ny,1); % Initial measurements
+u0 = [0; 0]; % Initial input
+
+% Initital conditions for extended measurment vector for MPC
+% All delay states are also at x0
+y_ext_0 = zeros(q*ny, 1); % Allocate space
+for row = 0:q-1 % First column of spaced Hankel matrix
+        y_ext_0(row*ny+1:(row+1)*ny, 1) = y0;
+end
 
 % Model parameters
 M     = 4.5; % Mass of drone body (at fulcrum)
@@ -59,4 +72,35 @@ waypoints_ts = timeseries([waypoints.x_coord, waypoints.z_coord], waypoints.poin
 % plot(waypoints.x_coord, waypoints.z_coord)
 % xlabel('x');
 % ylabel('z');
+
+%% LTI system
+Ts_mpc = 0.1; % MPC sampling time
+
+dmd_sys = ss(A_hat,B_hat,eye(q*ny),zeros(q*ny,nu),Ts); % LTI system
+dmd_sys = d2d(dmd_sys,Ts_mpc,'zoh'); % Resample to match MPC
+
+[A_hat2,B_hat2,C_hat2,D_hat2,Ts] = ssdata(dmd_sys); % Extract resampled matrixes
+dmd_sys = ss(A_hat,B_hat,C_hat2,D_hat2,Ts_mpc); % LTI system with new Ts 
+
+%% MPC object
+Ts_mpc = 0.1; % Sample time of MPC (s)
+old_status = mpcverbosity('off'); % No display messages
+dmd_sys.InputGroup.MV = 2; % Munipulated Variable
+dmd_sys.OutputGroup.MO = 6; % Measured Variable
+
+mpc_drone_2d = mpc(dmd_sys,Ts_mpc);
+mpc_drone_2d.Weights.OutputVariables = [zeros(1,(q-1)*ny), 1, 1, 0]; % Set weights of delay coordinates to 0, so they do not follow reference
+
+%% Nominal operating conditions for AMPC block
+U_nom = u_bar;
+X_nom = zeros(q*ny,1);
+Y_nom = zeros(q*ny,1);
+DX_nom = zeros(q*ny,1);
+
+
+
+
+
+
+
 

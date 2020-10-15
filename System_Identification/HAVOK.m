@@ -92,11 +92,13 @@ V_til_1 = V_tilde(1:end-1, :)';
 AB_tilde = V_til_2*pinv(V_til_1); % combined A and B matrix, side by side
 AB_tilde = stabilise(AB_tilde,3);
 
-% convert to x coordinates
-AB_bar = (U_tilde*S_tilde)*AB_tilde*pinv(U_tilde*S_tilde);
-A_bar = AB_bar(1:q*ny, 1:q*ny);
-B_bar = AB_bar(1:q*ny, q*ny+1:end);
-% A_bar = stabilise(A_bar,10);
+% Convert to x coordinates
+AB_hat = (U_tilde*S_tilde)*AB_tilde*pinv(U_tilde*S_tilde);
+
+% System matrixes from HAVOK
+A_hat = AB_hat(1:q*ny, 1:q*ny);
+B_hat = AB_hat(1:q*ny, q*ny+1:end);
+% A_hat = stabilise(A_hat,10);
 
 % DMD of Y
 Y2 = Y(:, 2:end  );
@@ -104,6 +106,8 @@ Y1 = Y(:, 1:end-1);
 
 YU = [Y1; Upsilon(:,1:end-1)]; % Combined matrix of Y and U, above and below
 AB = Y2*pinv(YU); % combined A and B matrix, side by side
+
+% System matrixes from DMD
 A  = AB(:,1:q*ny); % Extract A matrix
 B  = AB(:,(q*ny+1):end);
 
@@ -126,7 +130,7 @@ end
 Y_hat = zeros(length(y_hat_0),N_test); % Empty estimated Y
 Y_hat(:,1) = y_hat_0; % Initial condition
 for k = 1:N_test-1
-    Y_hat(:,k+1) = A_bar*Y_hat(:,k) + B_bar*u_test(:,k);
+    Y_hat(:,k+1) = A_hat*Y_hat(:,k) + B_hat*u_test(:,k);
 end
 
 y_hat_bar = Y_hat(end-ny+1:end, :); % Extract only non-delay time series (last m rows)
