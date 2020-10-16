@@ -36,7 +36,7 @@ rng(1); % Repeatable random numbers
 y_data_noise = y_data + sigma*randn(size(y_data));
 
 % Training data - Last sample of training is first sample of testing
-N_train = 1000; % Number of sampels in training data
+N_train = 600; % Number of sampels in training data
 y_train = y_data_noise(:,end-N_test-N_train+2:end-N_test+1); % Use noisy data
 u_train = u_data(:,end-N_test-N_train+2:end-N_test+1);
 t_train = t(:,end-N_test-N_train+2:end-N_test+1);
@@ -58,8 +58,15 @@ best_results = results(best_row,:)
 q = double(best_results.q);
 p = double(best_results.p);
 
-% q = 300; % Override
-% p = 120; % Override
+only_q = 1;
+if only_q
+    q = 11;
+    q_rows = find(results.q == q);
+    q_results = results(q_rows,:);
+    best_row = find(q_results.MAE_mean == min(q_results.MAE_mean));
+    best_results = q_results(best_row,:)
+    p = double(best_results.p);
+end
 
 w = N_train - q + 1; % num columns of Hankel matrix
 D = (q-1)*Ts; % Delay duration (Dynamics in delay embedding)

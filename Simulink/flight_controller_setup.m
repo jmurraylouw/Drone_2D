@@ -68,7 +68,7 @@ waypoints(2*i,  :) = table(point_time+interval_max, x_coord, z_coord); % Add tim
 waypoints_ts = timeseries([waypoints.x_coord, waypoints.z_coord], waypoints.point_time); % timeseries object for From Workspace block
 
 % Run with A and x
-run_and_plot = 1;
+run_and_plot = 0;
 if run_and_plot
     
     k_start = 500-q;
@@ -110,15 +110,11 @@ if run_and_plot
     hold off;
 end % run_and_plot
 
-% 
-%
-
 % % View only non-delay coordinates
-% C_hat = [zeros(ny,(q-1)*ny), eye(ny)];
-
+C_hat = [zeros(ny,(q-1)*ny), eye(ny)];
 
 % LTI system
-Ts_mpc = 0.1; % MPC sampling time
+Ts_mpc = 0.1; % Sample time of MPC (s)
 
 % Resample to correct sample time
 dmd_sys = ss(A,B,eye(q*ny),zeros(q*ny,nu),Ts); % LTI system
@@ -128,13 +124,18 @@ mpc_sys = d2d(dmd_sys,Ts_mpc,'zoh'); % Resample to match MPC
 mpc_sys = ss(A_mpc,B_mpc,C_mpc,D_mpc,Ts_mpc); % LTI system with new Ts 
 
 % MPC object
-Ts_mpc = 0.1; % Sample time of MPC (s)
 old_status = mpcverbosity('off'); % No display messages
 mpc_sys.InputGroup.MV = 2; % Munipulated Variable
-mpc_sys.OutputGroup.MO = 6; % Measured Variable
+mpc_sys.OutputGroup.MO = q*ny; % Measured Variable
 
+tuning_weight = 0.8; % Smaller = robust, Larger = aggressive
 mpc_drone_2d = mpc(mpc_sys,Ts_mpc);
-mpc_drone_2d.Weights.OutputVariables = [zeros(1,(q-1)*ny), 1, 1, 0]; % Set weights of delay coordinates to 0, so they do not follow reference
+mpc_drone_2d.ControlHorizon = 5;
+mpc_drone_2d.PredictionHorizon = 10;
+
+mpc_drone_2d.Weights.OutputVariables = [zeros(1,(q-1)*ny), 1, 1, 0]*tuning_weight; % Set weights of delay coordinates to 0, so they do not follow reference
+mpc_drone_2d.Weights.ManipulatedVariables = [0.1, 0.1]*tuning_weight;
+mpc_drone_2d.W.ManipulatedVariablesRate = [0.1, 0.1]/tuning_weight;
 
 % Nominal operating conditions for AMPC block
 U_nom = u_bar;

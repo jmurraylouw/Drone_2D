@@ -56,7 +56,7 @@ y_data_noise = y_data + sigma*randn(size(y_data));
 
 % Training data - Last sample of training is first sample of testing
 % ??? later add N_train to results table being saved
-N_train = 600; % Number of sampels in training data x
+N_train = 500; % Number of sampels in training data x
 y_train = y_data_noise(:,end-N_test-N_train+2:end-N_test+1); % Use noisy data
 u_train = u_data(:,end-N_test-N_train+2:end-N_test+1);
 t_train = t(:,end-N_test-N_train+2:end-N_test+1);
