@@ -10,7 +10,7 @@ total_timer = tic; % Start timer for this script
 % Search space
 q_min = 1; % Min value of q in grid search
 q_max = 40; % Max value of q in grid search
-q_increment = 10; % Increment value of q in grid search
+q_increment = 5; % Increment value of q in grid search
 
 p_min = 3; % Min value of p in grid search
 p_max = 200; % Max value of p in grid search
@@ -56,7 +56,7 @@ y_data_noise = y_data + sigma*randn(size(y_data));
 
 % Training data - Last sample of training is first sample of testing
 % ??? later add N_train to results table being saved
-N_train = 500; % Number of sampels in training data x
+N_train = 600; % Number of sampels in training data x
 y_train = y_data_noise(:,end-N_test-N_train+2:end-N_test+1); % Use noisy data
 u_train = u_data(:,end-N_test-N_train+2:end-N_test+1);
 t_train = t(:,end-N_test-N_train+2:end-N_test+1);
