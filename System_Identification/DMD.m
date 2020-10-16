@@ -1,7 +1,7 @@
 %% Implentation of DMD for 2D Drone
 close all;
 
-simulation_data_file = 'No_payload_data_6';
+simulation_data_file = 'No_payload_data_5';
 load(['Data/', simulation_data_file, '.mat']) % Load simulation data
 
 % Extract data
@@ -17,7 +17,7 @@ u_bar = mean(u_data,2); % Input needed to keep at a fixed point
 u_data  = u_data - u_bar; % Adjust for unmeasured input
 
 % Testing data - Last 50 s is for testing and one sample overlaps training 
-N_test = 100; % Num of data samples for testing
+N_test = 1000; % Num of data samples for testing
 x_test = x_data(:,end-N_test+1:end);
 y_test = y_data(:,end-N_test+1:end); % One sample of testing data overlaps for initial condition
 u_test = u_data(:,end-N_test+1:end);
@@ -37,7 +37,7 @@ sigma = 0.001; % Noise standard deviation
 y_data_noise = y_data + sigma*randn(size(y_data));
 
 % Training data - Last sample of training is first sample of testing
-N_train = 500; % Number of sampels in training data
+N_train = 5000; % Number of sampels in training data
 y_train = y_data_noise(:,end-N_test-N_train+2:end-N_test+1); % Use noisy data
 u_train = u_data(:,end-N_test-N_train+2:end-N_test+1);
 t_train = t(:,end-N_test-N_train+2:end-N_test+1);
@@ -90,13 +90,13 @@ B  = AB(:,(ny+1):end);
 
 %% Run with A and x
 
-k_start = 500; % k from where to start applying model
-window = 100; % Number of data points to run and test for
+k_start = 5000; % k from where to start applying model
+N_test = 1000; % Number of data points to run and test for
 
 % Start at end of initial condition k
-y_run = y_data(:, k_start + (1:window));
-u_run = u_data(:, k_start + (1:window));
-t_run = t(:, k_start + (1:window));
+y_run = y_data(:, k_start + (1:N_test));
+u_run = u_data(:, k_start + (1:N_test));
+t_run = t(:, k_start + (1:N_test));
 N_run = length(y_run);
 
 % Initial condition
