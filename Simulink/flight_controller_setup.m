@@ -2,8 +2,8 @@
 load('Data/Drone_2D_control_params.mat'); % Load controller gain values
 
 % Parameters
-q = 90; % Override
-p = 33; % Override
+% q = 90; % Override
+% p = 33; % Override
 
 % Dimensions
 nx = 6; % Number of states
@@ -149,62 +149,75 @@ waypoints_ts = timeseries([waypoints.x_coord, waypoints.z_coord], waypoints.poin
 % D_hat = zeros(m_hat, l_hat);
 % 
 % x0_hat = zeros(n_hat,1);
-% 
-% % Run with A and x
-% run_and_plot = 1;
-% if run_and_plot
-%     
-%     Initial condition
-%     y_hat_0 = zeros(q*ny,1);
-%     for row = 0:q-1 % First column of spaced Hankel matrix
-%         y_hat_0(row*ny+1:(row+1)*ny, 1) = y_train(:, end - ((q-1)+1) + row + 1);
-%     end
-% 
-%     Run model
-%     Y_hat = zeros(length(y_hat_0),N_test); % Empty estimated Y
-%     Y_hat(:,1) = y_hat_0; % Initial condition
-%     for k = 1:N_test-1
-%         Y_hat(:,k+1) = A_hat*Y_hat(:,k) + B_hat*u_test(:,k);
-%     end
-% 
-%     y_hat = Y_hat(end-ny+1:end, :); % Extract only non-delay time series (last m rows)
-% 
-%     Vector of Mean Absolute Error on testing data
+
+
+% Run with A and x
+run_and_plot = 1;
+if run_and_plot
+    
+    k_start = 500-q;
+    window = 10*2; % Number of data points to run and test for
+
+    % Initial condition
+    y_hat_0 = [];
+    for row = 0:q-1 % First column of spaced Hankel matrix
+        k = k_start + row;
+        y_hat_0 = [y_hat_0; y_data(:,k)];
+    end
+    
+    % Start at end of initial condition k
+    Y_data = y_data(:,k:k+window);
+    U      = u_data(:,k:k+window);
+    T      = t(:,k:k+window);
+    N      = length(Y_data);
+    
+    % Run model
+    Y_hat = zeros(length(y_hat_0),N); % Empty estimated Y
+    Y_hat(:,1) = y_hat_0; % Initial condition
+    for k = 1:N-1
+        Y_hat(:,k+1) = A_hat*Y_hat(:,k) + B_hat*U(:,k);
+    end
+
+    y_hat = Y_hat(end-ny+1:end, :); % Extract only non-delay time series (last m rows)
+
+%     % Vector of Mean Absolute Error on testing data
 %     MAE = sum(abs(y_hat - y_test), 2)./N_test % For each measured state
-% 
-%     % Plot data vs model
-%     figure;
-%     plot(t_train, y_train);
-%     hold on;
+
+    % Plot data vs model
+    figure;
+    plot(T, Y_data);
+    hold on;
 %     plot(t_test, y_test);
+
+    plot(T, y_hat, '--', 'LineWidth', 1); % Plot only non-delay coordinate
+    title('Training and Testing data vs Model');
+    hold off;
+end % run_and_plot
+
 % 
-%     plot(t_test, y_hat, '--', 'LineWidth', 1); % Plot only non-delay coordinate
-%     plot((D + t(N-N_test-N_train)).*[1, 1], ylim, 'r');
-%     plot(t(N-N_test-N_train).*[1,1], ylim, 'k');
-%     plot(t(N-N_test).*[1,1], ylim, 'k');
-%     title('Training and Testing data vs Model');
-%     legend('','','','','','', 'x hat','z hat','theta hat', 'x hat bar','z hat bar','theta hat bar');
-%     hold off;
-% end % run_and_plot
-% 
-% 
-% 
+%
+
+% % View only non-delay coordinates
+% C_hat = [zeros(ny,(q-1)*ny), eye(ny)];
+
+
 % LTI system
 Ts_mpc = 0.1; % MPC sampling time
 
+% Resample to correct sample time
 dmd_sys = ss(A_hat,B_hat,eye(q*ny),zeros(q*ny,nu),Ts); % LTI system
-dmd_sys = d2d(dmd_sys,Ts_mpc,'zoh'); % Resample to match MPC
+mpc_sys = d2d(dmd_sys,Ts_mpc,'zoh'); % Resample to match MPC
 
-[A_hat2,B_hat2,C_hat2,D_hat2,Ts] = ssdata(dmd_sys); % Extract resampled matrixes
-dmd_sys = ss(A_hat,B_hat,C_hat2,D_hat2,Ts_mpc); % LTI system with new Ts 
+[A_mpc,B_mpc,C_mpc,D_mpc,~] = ssdata(mpc_sys); % Extract resampled matrixes
+mpc_sys = ss(A_mpc,B_mpc,C_mpc,D_mpc,Ts_mpc); % LTI system with new Ts 
 
 % MPC object
 Ts_mpc = 0.1; % Sample time of MPC (s)
 old_status = mpcverbosity('off'); % No display messages
-dmd_sys.InputGroup.MV = 2; % Munipulated Variable
-dmd_sys.OutputGroup.MO = 6; % Measured Variable
+mpc_sys.InputGroup.MV = 2; % Munipulated Variable
+mpc_sys.OutputGroup.MO = 6; % Measured Variable
 
-mpc_drone_2d = mpc(dmd_sys,Ts_mpc);
+mpc_drone_2d = mpc(mpc_sys,Ts_mpc);
 mpc_drone_2d.Weights.OutputVariables = [zeros(1,(q-1)*ny), 1, 1, 0]; % Set weights of delay coordinates to 0, so they do not follow reference
 
 % Nominal operating conditions for AMPC block
@@ -212,11 +225,13 @@ U_nom = u_bar;
 X_nom = zeros(q*ny,1);
 Y_nom = zeros(q*ny,1);
 DX_nom = zeros(q*ny,1);
-% 
-% 
-% 
-% 
-% 
-% 
-% 
-% 
+
+
+
+
+
+
+
+
+
+

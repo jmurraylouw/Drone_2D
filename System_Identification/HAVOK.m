@@ -8,11 +8,11 @@
 u_data  = out.F_r.Data';
 x_data  = out.x.Data';
 y_data  = x_data([1,2,3],:); % Measurement data (x, z, theta)
-t       = out.tout'; % Time
+t       = out.x.Time'; % Time
 
 % Adjust for constant disturbance / mean control values
 % u_bar = mean(u_data,2); % Input needed to keep at a fixed point
-u_bar = [0; -4.5*9.81];
+% u_bar = [0; -4.5*9.81];
 u_data  = u_data - u_bar; % Adjust for unmeasured input
 
 % Testing data - Last 50 s is for testing and one sample overlaps training 
@@ -36,7 +36,7 @@ rng(1); % Repeatable random numbers
 y_data_noise = y_data + sigma*randn(size(y_data));
 
 % Training data - Last sample of training is first sample of testing
-N_train = 8000; % Number of sampels in training data
+N_train = 1000; % Number of sampels in training data
 y_train = y_data_noise(:,end-N_test-N_train+2:end-N_test+1); % Use noisy data
 u_train = u_data(:,end-N_test-N_train+2:end-N_test+1);
 t_train = t(:,end-N_test-N_train+2:end-N_test+1);

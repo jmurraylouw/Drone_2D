@@ -8,11 +8,11 @@ clear all;
 total_timer = tic; % Start timer for this script
 
 % Search space
-q_min = 50; % Min value of q in grid search
-q_max = 100; % Max value of q in grid search
-q_increment = 2; % Increment value of q in grid search
+q_min = 1; % Min value of q in grid search
+q_max = 40; % Max value of q in grid search
+q_increment = 10; % Increment value of q in grid search
 
-p_min = 20; % Min value of p in grid search
+p_min = 3; % Min value of p in grid search
 p_max = 200; % Max value of p in grid search
 p_increment = 1; % Increment value of p in grid search
 
@@ -20,14 +20,14 @@ q_search = q_min:q_increment:q_max; % List of q parameters to search in
 % p_search defined before p for loop
 
 % Extract data
-simulation_data_file = 'No_payload_data_5';
-% load(['Data/', simulation_data_file, '.mat']) % Load simulation data
+simulation_data_file = 'No_payload_data_6';
+load(['Data/', simulation_data_file, '.mat']) % Load simulation data
 
 u_data  = out.F_r.Data';
 x_data  = out.x.Data';
 measured_states = [1,2,3];
 y_data  = x_data(measured_states,:); % Measurement data (x, z, theta)
-t       = out.tout'; % Time
+t       = out.x.Time'; % Time
 
 % Adjust for constant disturbance / mean control values
 u_bar = mean(u_data,2); % Input needed to keep at a fixed point
@@ -35,7 +35,7 @@ u_bar = mean(u_data,2); % Input needed to keep at a fixed point
 u_data  = u_data - u_bar; % Adjust for unmeasured input
 
 % Testing data - Last 50 s is for testing and one sample overlaps training 
-N_test = 2000; % Num of data samples for testing
+N_test = 100; % Num of data samples for testing
 x_test = x_data(:,end-N_test+1:end);
 y_test = y_data(:,end-N_test+1:end); % One sample of testing data overlaps for initial condition
 u_test = u_data(:,end-N_test+1:end);
@@ -56,7 +56,7 @@ y_data_noise = y_data + sigma*randn(size(y_data));
 
 % Training data - Last sample of training is first sample of testing
 % ??? later add N_train to results table being saved
-N_train = 7000; % Number of sampels in training data x
+N_train = 500; % Number of sampels in training data x
 y_train = y_data_noise(:,end-N_test-N_train+2:end-N_test+1); % Use noisy data
 u_train = u_data(:,end-N_test-N_train+2:end-N_test+1);
 t_train = t(:,end-N_test-N_train+2:end-N_test+1);
@@ -179,6 +179,11 @@ best_results = results(best_row,:)
 
 total_time = toc(total_timer); % Display total time taken
 
+%% Plot spread of results
+plot_results = 1;
+if plot_results
+    semilogy(results.q, results.MAE_mean, '.')
+end
 
 function A = stabilise(A_unstable,max_iterations)
     % If some eigenvalues are unstable due to machine tolerance,
