@@ -1,9 +1,10 @@
 %% Implentation of DMD for 2D Drone
 % Simulate calculating a new DMD model at every timestep
 
-close all;
+% close all;
 
-simulation_data_file = 'No_payload_data_6';
+% Load simulation data
+simulation_data_file = 'No_payload_data_5';
 load(['Data/', simulation_data_file, '.mat']) % Load simulation data
 
 % Extract data
@@ -17,9 +18,6 @@ u_bar = mean(u_data,2); % Input needed to keep at a fixed point
 % u_bar = [0; -4.5*9.81];
 u_data  = u_data - u_bar; % Adjust for unmeasured input
 
-% Testing data - Last 50 s is for testing and one sample overlaps training 
-N_test = 1000; % Num of data samples for testing
-
 % Data dimentions
 nx = size(x_data,1); % number of states
 ny = size(y_data,1); % number of measurements
@@ -27,38 +25,24 @@ nu = size(u_data,1); % number of inputs
 Ts = t(2)-t(1)     % Sample time of data
 N  = length(t);     % Number of data samples
 
+% Parameters
+N_train = 30/Ts; % Num of data samples for training
+N_test = 20; % Num of data samples for testing
+sigma = 0.001; % Noise standard deviation
+q = 10; % Override
+model_intervals = 10; % Only dod DMD every so many time-steps
+
 % Add noise
 rng('default');
 rng(1); % Repeatable random numbers
-sigma = 0.001; % Noise standard deviation
 y_data_noise = y_data + sigma*randn(size(y_data));
-
-% Read previous results
-sig_str = strrep(num2str(sigma),'.','_'); % Convert sigma value to string
-results_file = ['Data/dmd_results_', simulation_data_file, '_sig=', sig_str, '.mat'];
-
-try
-    load(results_file);
-    results(~results.q,:) = []; % remove empty rows
-catch
-    disp('No saved results file')  
-end
-
-% Parameters
-% best_row = find(results.MAE_mean == min(results.MAE_mean));
-% best_results = results(best_row,:)
-% q = double(best_results.q);
-% p = double(best_results.p);
-
-q = 20; % Override
-
-w = N_train - q + 1; % num columns of Hankel matrix
 
 % Training data with only initial conditions
 y_train = y_data(:,1) + zeros(ny,N_train); % Assume all data before simulation is at init conditions
 u_train = u_bar + zeros(nu,N_train);
 
 % Hankel matrix with delay measurements
+w = N_train - q + 1; % num columns of Hankel matrix
 Delays = zeros((q-1)*ny,w); % Augmented state with delay coordinates [...; Y(k-2); Y(k-1); Y(k)]
 for row = 0:q-2 % Add delay coordinates
     Delays((end - ny*(row+1) + 1):(end - ny*row), :) = y_train(:, row + (1:w));
@@ -68,78 +52,131 @@ Upsilon = [Delays; u_train(:, q:end)]; % Leave out last time step to match V_til
 % Matrix with time series of states
 Y = y_train(:, q:end);
 
-for k = 1:N
+% Create empty results table
+VariableTypes = {'int16', 'int16', 'double'}; % id, q, MAE_mean
+VariableNames = {'k',     'q',     'MAE_mean'};
+for i = 1:ny % Mae column for each measured state
+    VariableNames = [VariableNames, strcat('MAE_', num2str(i))];
+    VariableTypes = [VariableTypes, 'double'];
+end
+Size = [N, length(VariableTypes)];
+
+results = table('Size',Size,'VariableTypes',VariableTypes,'VariableNames',VariableNames);
+emptry_row = 1; % Keep track of next empty row to insert results 
+    
+for k = N_test:N - N_test
+    k
+    tic;
     
     % Current timestep data
-    y_k = y_data_noise(:,k); % Sample from noisy data
-    u_k = u_data(:,k);
+    y = y_data_noise(:,k); % Sample from noisy data
+    u = u_data(:,k);
     
     % Update Upsilon
-    new_row = [Y(:,end); Upsilon(1:(end - ny - nu), end); u_k];
+    new_row = [Y(:,end); Upsilon(1:(end - ny - nu), end); u];
     Upsilon = [Upsilon(:,2:end), new_row]; % Add new row of updated values
     
     % Update Y
-    Y = [Y(:,2:end), y_k]; % Forget oldest entry, add y_k
+    Y = [Y(:,2:end), y]; % Forget oldest entry, add y_k
     
-    % DMD of Y
-    Y2 = Y(:, 2:end  ); 
-    Y1 = Y(:, 1:end-1); % One time-step behin of Y2
+    if (mod(k, model_intervals) == 0)
+        
+        % DMD of Y
+        Y2 = Y(:, 2:end  ); 
+        Y1 = Y(:, 1:end-1); % One time-step behin of Y2
 
-    YU = [Y1; Upsilon(:,1:end-1)]; % Combined matrix of Y and U, above and below
-    AB = Y2*pinv(YU); % combined A and B matrix, side by side
+        YU = [Y1; Upsilon(:,1:end-1)]; % Combined matrix of Y and U, above and below
+        AB = Y2*pinv(YU); % combined A and B matrix, side by side
 
-    % System matrixes from DMD
-    A  = AB(:,1:ny); % Extract A matrix
-    B  = AB(:,(ny+1):end);
+        % System matrixes from DMD
+        A  = AB(:,1:ny); % Extract A matrix
+        B  = AB(:,(ny+1):end);
 
-    % Adjust slightly unstable eigenvalues
-    A = stabilise(A,3);
+        % Adjust slightly unstable eigenvalues
+        A = stabilise(A,3);
 
-    %% Run with A and x
 
-    k_start = 5000; % k from where to start applying model
-    N_test = 1000; % Number of data points to run and test for
+        if (k > q) % Need initial conditions for delays        
+        %% Run with A and x
+            % Start at end of initial condition k
 
-    % Start at end of initial condition k
-    y_run = y_data(:, k_start + (1:N_test));
-    u_run = u_data(:, k_start + (1:N_test));
-    t_run = t(:, k_start + (1:N_test));
-    N_run = length(y_run);
+            y_run = y_data(:, k + (1:N_test));
+            u_run = u_data(:, k + (1:N_test));
+            t_run = t(:, k + (1:N_test));
+            N_run = length(y_run);
 
-    % Initial condition
-    y_hat_0 = y_data(:,k_start);
+            % Initial condition
+            y_hat_0 = y_data(:,k);
 
-    % Initial delay coordinates
-    y_delays = zeros((q-1)*ny,1);
-    k = k_start; % index of y_data
-    for i = 1:ny:ny*(q-1) % index of y_delays
-        k = k - 1; % previosu index of y_data
-        y_delays(i:(i+ny-1)) = y_data(:,k);
-    end
+            % Initial delay coordinates
+            y_delays = zeros((q-1)*ny,1);
+            j = k; % index of y_data
+            for i = 1:ny:ny*(q-1) % index of y_delays
+                j = j - 1; % previosu index of y_data
+                y_delays(i:(i+ny-1)) = y_data(:,j);
+            end
 
-    % Run model
-    y_hat = zeros(ny,N_run); % Empty estimated Y
-    y_hat(:,1) = y_hat_0; % Initial condition
-    for k = 1:N_run-1
-        upsilon = [y_delays; u_run(:,k)]; % Concat delays and control for use with B
-        y_hat(:,k+1) = A*y_hat(:,k) + B*upsilon;
-        y_delays = [y_hat(:,k); y_delays(1:(end-ny),:)]; % Add y(k) to y_delay for next step [y(k); y(k-1); ...]
-    end
+            % Run model
+            y_hat = zeros(ny,N_run); % Empty estimated Y
+            y_hat(:,1) = y_hat_0; % Initial condition
+            for j = 1:N_run-1
+                upsilon = [y_delays; u_run(:,j)]; % Concat delays and control for use with B
+                y_hat(:,j+1) = A*y_hat(:,j) + B*upsilon;
+                y_delays = [y_hat(:,j); y_delays(1:(end-ny),:)]; % Add y(k) to y_delay for next step [y(k); y(k-1); ...]
+            end
 
-    % Vector of Mean Absolute Error on testing data
-    MAE = sum(abs(y_hat - y_run), 2)./N_run % For each measured state
+            % Vector of Mean Absolute Error on testing data
+            MAE = sum(abs(y_hat - y_run), 2)./N_run; % For each measured state
 
+            % Save results
+            results(emptry_row,:) = [{k, q, mean(MAE)}, num2cell(MAE')]; % add to table of results
+            emptry_row = emptry_row + 1; 
+
+            % Plot and pause
+            plot_and_pause = 0;
+            if plot_and_pause
+                clf('reset')
+    %             plot(t_run, y_run)
+                hold on;
+                plot(t_run, y_hat, '--')
+                hold off;
+                disp('Pausing... Press enter to continue')
+                pause
+                disp('Continuing...')
+            end
+
+        end % Run model
+    end % Every k_intervals
+    toc; 
 end % run through time steps
-%% Plot data vs model
-figure;
-plot(t_run, y_run);
-hold on;
 
-plot(t_run, y_hat, '--', 'LineWidth', 1); % Plot only non-delay coordinate
-title('Training and Testing data vs Model');
-legend()
-hold off;
 
+%% Plot spread of results
+results(~results.q,:) = []; % remove empty rows
+
+plot_results = 1;
+if plot_results
+    figure
+    semilogy(t(results.k), results.MAE_mean)
+    title("Model error over time")
+    
+    figure
+    plot(t(results.k), results.MAE_mean*100)
+    hold on
+    title("Model error vs states")
+    plot(t, y_data)
+    legend('MAE_mean', 'x', 'z', 'theta')
+    hold off
+    
+end
+
+%% MAE over all time steps
+valid_rows = find(results.k < N_train); % Only rows where full N_train sample were available for model
+valid_results = results(valid_rows,:);
+prev_MAE = total_MAE_mean
+total_MAE_mean = mean(valid_results.MAE_mean)
+
+%%
 function A = stabilise(A_unstable,max_iterations)
     % If some eigenvalues are unstable due to machine tolerance,
     % Scale them to be stable
