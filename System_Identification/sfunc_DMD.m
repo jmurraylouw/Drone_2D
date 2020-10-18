@@ -9,71 +9,66 @@ setup(block);
 
 function setup(block)
 
-% Dialog parameters
-block.NumDialogPrms     = 8;
+    % Dialog parameters
+    block.NumDialogPrms     = 6;
 
-Ts      = block.DialogPrm(1).Data;
-ny      = block.DialogPrm(2).Data;
-nu      = block.DialogPrm(3).Data;
-y0      = block.DialogPrm(4).Data;
-u0      = block.DialogPrm(5).Data;
-N_train = block.DialogPrm(6).Data;
-q       = block.DialogPrm(7).Data;
-model_intervals = block.DialogPrm(8).Data; 
+    Ts      = block.DialogPrm(1).Data;
+    ny      = block.DialogPrm(2).Data;
+    nu      = block.DialogPrm(3).Data;
+    N_train = block.DialogPrm(4).Data;
+    q       = block.DialogPrm(5).Data;
+    model_intervals = block.DialogPrm(6).Data; 
 
-% Register number of ports
-block.NumInputPorts  = 2;
-block.NumOutputPorts = 2;
+    % Register number of ports
+    block.NumInputPorts  = 2;
+    block.NumOutputPorts = 2;
 
-% Setup port properties to be inherited or dynamic
-block.SetPreCompInpPortInfoToDynamic;
-block.SetPreCompOutPortInfoToDynamic;
+    % Setup port properties to be inherited or dynamic
+    block.SetPreCompInpPortInfoToDynamic;
+    block.SetPreCompOutPortInfoToDynamic;
 
-% INPUT port properties
-% y (measurement vector)
-block.InputPort(1).Dimensions        = ny;
-block.InputPort(1).DatatypeID        = 0;  % double
-block.InputPort(1).Complexity        = 'Real';
+    % INPUT port properties
+    % y (measurement vector)
+    block.InputPort(1).Dimensions        = ny;
+    block.InputPort(1).DatatypeID        = 0;  % double
+    block.InputPort(1).Complexity        = 'Real';
 
-% u (input vector)
-block.InputPort(2).Dimensions        = nu;
-block.InputPort(2).DatatypeID        = 0;  % double
-block.InputPort(2).Complexity        = 'Real';
+    % u (input vector)
+    block.InputPort(2).Dimensions        = nu;
+    block.InputPort(2).DatatypeID        = 0;  % double
+    block.InputPort(2).Complexity        = 'Real';
 
 
-% OUTPUT port properties
-% A (Flattened system matrix)
-block.OutputPort(1).DatatypeID       = 0; % double
-block.OutputPort(1).Complexity       = 'Real';
-block.OutputPort(1).SamplingMode     = 'Sample';
-block.OutputPort(1).Dimensions       = [ny, ny];
+    % OUTPUT port properties
+    % A (Flattened system matrix)
+    block.OutputPort(1).DatatypeID       = 0; % double
+    block.OutputPort(1).Complexity       = 'Real';
+    block.OutputPort(1).SamplingMode     = 'Sample';
+    block.OutputPort(1).Dimensions       = [ny, ny];
 
-% B (Input matrix)
-block.OutputPort(2).DatatypeID       = 0; % double
-block.OutputPort(2).Complexity       = 'Real';
-block.OutputPort(2).SamplingMode     = 'Sample';
-block.OutputPort(2).Dimensions       = [ny, nu];
+    % B (Input matrix)
+    block.OutputPort(2).DatatypeID       = 0; % double
+    block.OutputPort(2).Complexity       = 'Real';
+    block.OutputPort(2).SamplingMode     = 'Sample';
+    block.OutputPort(2).Dimensions       = [ny, (q-1)*ny + nu];
 
-% Sample time
-block.SampleTimes = [Ts, 0]; % Set sample time
+    % Sample time
+    block.SampleTimes = [Ts, 0]; % Set sample time
 
-% Specify the block simStateCompliance. The allowed values are:
-%    'UnknownSimState', < The default setting; warn and assume DefaultSimState
-%    'DefaultSimState', < Same sim state as a built-in block
-%    'HasNoSimState',   < No sim state
-%    'CustomSimState',  < Has GetSimState and SetSimState methods
-%    'DisallowSimState' < Error out when saving or restoring the model sim state
-block.SimStateCompliance = 'DefaultSimState';
+    % Specify the block simStateCompliance. The allowed values are:
+    %    'UnknownSimState', < The default setting; warn and assume DefaultSimState
+    %    'DefaultSimState', < Same sim state as a built-in block
+    %    'HasNoSimState',   < No sim state
+    %    'CustomSimState',  < Has GetSimState and SetSimState methods
+    %    'DisallowSimState' < Error out when saving or restoring the model sim state
+    block.SimStateCompliance = 'DefaultSimState';
 
-% Internal registry for block methods
-block.RegBlockMethod('PostPropagationSetup',    @DoPostPropSetup);
-block.RegBlockMethod('InitializeConditions', @InitializeConditions);
-block.RegBlockMethod('Start', @Start);
-block.RegBlockMethod('Outputs', @Outputs);     % Required
-block.RegBlockMethod('Update', @Update);
-block.RegBlockMethod('Derivatives', @Derivatives);
-block.RegBlockMethod('Terminate', @Terminate); % Required
-block.RegBlockMethod('SetInputPortSamplingMode', @SetInputPortSamplingMode);
+    % Internal registry for block methods
+    block.RegBlockMethod('PostPropagationSetup',    @DoPostPropSetup);
+    block.RegBlockMethod('Start', @Start);
+    block.RegBlockMethod('Outputs', @Outputs);     % Required
+    block.RegBlockMethod('Terminate', @Terminate); % Required
+    block.RegBlockMethod('SetInputPortSamplingMode', @SetInputPortSamplingMode);
   
 %end setup
 
@@ -85,11 +80,9 @@ function DoPostPropSetup(block)
     Ts      = block.DialogPrm(1).Data;
     ny      = block.DialogPrm(2).Data;
     nu      = block.DialogPrm(3).Data;
-    y0      = block.DialogPrm(4).Data;
-    u0      = block.DialogPrm(5).Data;
-    N_train = block.DialogPrm(6).Data;
-    q       = block.DialogPrm(7).Data;
-    model_intervals = block.DialogPrm(8).Data; 
+    N_train = block.DialogPrm(4).Data;
+    q       = block.DialogPrm(5).Data;
+    model_intervals = block.DialogPrm(6).Data; 
   
     w = N_train - q + 1; % num columns of Hankel matrix
     
@@ -108,27 +101,21 @@ function DoPostPropSetup(block)
     block.Dwork(2).DatatypeID      = 0;      % double
     block.Dwork(2).Complexity      = 'Real'; % real
     block.Dwork(2).UsedAsDiscState = true;
-        
-function InitializeConditions(block)
-
-%end InitializeConditions
 
 function Start(block)
     % Dialog parameters
     Ts      = block.DialogPrm(1).Data;
     ny      = block.DialogPrm(2).Data;
     nu      = block.DialogPrm(3).Data;
-    y0      = block.DialogPrm(4).Data;
-    u0      = block.DialogPrm(5).Data;
-    N_train = block.DialogPrm(6).Data;
-    q       = block.DialogPrm(7).Data;
-    model_intervals = block.DialogPrm(8).Data; 
+    N_train = block.DialogPrm(4).Data;
+    q       = block.DialogPrm(5).Data;
+    model_intervals = block.DialogPrm(6).Data; 
     
     w = N_train - q + 1; % num columns of Hankel matrix
 
-    % Training data with only initial conditions
-    y_train = y0 + zeros(ny,N_train); % Assume all data before simulation is at init conditions
-    u_train = u0 + zeros(nu,N_train);
+    % Empty training data
+    y_train = zeros(ny,N_train); % Assume all data before simulation is at init conditions
+    u_train = zeros(nu,N_train);
     
     % Inititialise Hankel matrix with delay measurements
     Delays = zeros((q-1)*ny,w); % Augmented state with delay coordinates [...; Y(k-2); Y(k-1); Y(k)]
@@ -152,11 +139,9 @@ function Outputs(block)
     Ts      = block.DialogPrm(1).Data;
     ny      = block.DialogPrm(2).Data;
     nu      = block.DialogPrm(3).Data;
-    y0      = block.DialogPrm(4).Data;
-    u0      = block.DialogPrm(5).Data;
-    N_train = block.DialogPrm(6).Data;
-    q       = block.DialogPrm(7).Data;
-    model_intervals = block.DialogPrm(8).Data; 
+    N_train = block.DialogPrm(4).Data;
+    q       = block.DialogPrm(5).Data;
+    model_intervals = block.DialogPrm(6).Data; 
     
     w = N_train - q + 1; % num columns of Hankel matrix
     
@@ -168,8 +153,8 @@ function Outputs(block)
     Upsilon = reshape(U_dwork, ((q-1)*ny + nu), w); % Reshape vector into matrix
     
     % Current timestep datadata
-    u       = block.InputPort(1).Data;
-    x       = block.InputPort(2).Data;
+    y       = block.InputPort(1).Data;
+    u       = block.InputPort(2).Data;
     
     % Update Upsilon
     new_row = [Y(:,end); Upsilon(1:(end - ny - nu), end); u];
@@ -210,4 +195,22 @@ function SetInputPortSamplingMode(block, port, mode)
 function Terminate(block)
 
 %end Terminate
+
+function A = stabilise(A_unstable,max_iterations)
+    % If some eigenvalues are unstable due to machine tolerance,
+    % Scale them to be stable
+    A = A_unstable;
+    count = 0;
+    while (sum(abs(eig(A)) > 1) ~= 0)       
+        [Ve,De] = eig(A);
+        unstable = abs(De)>1; % indexes of unstable eigenvalues
+        De(unstable) = De(unstable)./abs(De(unstable)) - 10^(-14 + count*2); % Normalize all unstable eigenvalues (set abs(eig) = 1)
+        A = Ve*De/(Ve); % New A with margininally stable eigenvalues
+        A = real(A);
+        count = count+1;
+        if(count > max_iterations)
+            break
+        end
+    end
+% end stabilise
 
