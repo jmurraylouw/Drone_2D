@@ -110,50 +110,55 @@ if run_and_plot
     hold off;
 end % run_and_plot
 
-
-% % View only non-delay coordinates
-C_hat = [zeros(ny,(q-1)*ny), eye(ny)];
-
-% LTI system
+% Sample times
 Ts_mpc = 0.1; % Sample time of MPC (s)
-
-% Resample to correct sample time
-% dmd_sys = ss(A,B,eye(ny),zeros(ny,(q-1)*ny + nu),Ts); % LTI system
-% mpc_sys = d2d(dmd_sys,Ts_mpc,'zoh'); % Resample to match MPC
-% 
-% [A_mpc,B_mpc,C_mpc,D_mpc,~] = ssdata(mpc_sys); % Extract resampled matrixes
-% mpc_sys = ss(A_mpc,B_mpc,C_mpc,D_mpc,Ts_mpc); % LTI system with new Ts 
-
-% MPC object
-% old_status = mpcverbosity('off'); % No display messages
-% mpc_sys.InputGroup.MV = nu; % Munipulated Variable
-% mpc_sys.OutputGroup.MO = ny; % Measured Variable
-% 
-% tuning_weight = 0.8; % Smaller = robust, Larger = aggressive
-% mpc_drone_2d = mpc(mpc_sys,Ts_mpc);
-% mpc_drone_2d.ControlHorizon = 5;
-% mpc_drone_2d.PredictionHorizon = 10;
-% 
-% mpc_drone_2d.Weights.OutputVariables = [1, 1, 0]*tuning_weight; % Set weights of delay coordinates to 0, so they do not follow reference
-% mpc_drone_2d.Weights.ManipulatedVariables = [0.1, 0.1]*tuning_weight;
-% mpc_drone_2d.W.ManipulatedVariablesRate = [0.1, 0.1]/tuning_weight;
-
-% Nominal operating conditions for AMPC block
-U_nom = u_bar;
-X_nom = zeros(q*ny,1);
-Y_nom = zeros(q*ny,1);
-DX_nom = zeros(q*ny,1);
+Ts_dmd = Ts_mpc; % Sample time of DMD
 
 % DMD parameters
-% Ts, ny, nu, x0, u0, N_train, q, model_intervals
-Ts = Ts_mpc; 
+% Ts_dmd, ny, nu, x0, u0, N_train, q, model_intervals
+% Ts_dmd
 % ny = ; 
 % nu = ; 
 y0 = x0([1,2,3],:); 
 % u0 = ; 
-N_train = 30/Ts; % Num of data samples for training 
+N_train = 30/Ts_dmd; % Num of data samples for training 
 q = 10; 
 model_intervals = 10; 
+
+delays_0 = []; % Initial delay vector
+for i = 1:q-1
+    delays_0 = [delays_0; y0];
+end
+
+% Initial LTI system 
+A_mpc = A;
+B_mpc = B;
+C_mpc = eye(ny);
+D_mpc = zeros(ny, (q-1)*ny + nu);
+mpc_sys = ss(A_mpc,B_mpc,C_mpc,D_mpc,Ts_mpc); % LTI system
+
+% MPC object
+old_status = mpcverbosity('off'); % No display messages
+mpc_sys.InputGroup.MV = (q-1)*ny + (1:nu); % Munipulated Variable indices
+mpc_sys.InputGroup.MD = 1:(q-1)*ny; % Measured Disturbances indices
+mpc_sys.OutputGroup.MO = ny; % Measured Variable
+
+tuning_weight = 0.8; % Smaller = robust, Larger = aggressive
+mpc_drone_2d = mpc(mpc_sys,Ts_mpc);
+mpc_drone_2d.ControlHorizon     = 5;
+mpc_drone_2d.PredictionHorizon  = 10;
+
+mpc_drone_2d.Weights.OutputVariables        = [1, 1, 0]*tuning_weight;
+mpc_drone_2d.Weights.ManipulatedVariables   = [0.1, 0.1]*tuning_weight; % Weights of delay coordinates to 0
+mpc_drone_2d.W.ManipulatedVariablesRate     = [0.1, 0.1]/tuning_weight;
+
+% Nominal operating conditions for AMPC block
+U_nom = [zeros((q-1)*ny,1); u_bar];
+X_nom = zeros(ny,1);
+Y_nom = zeros(ny,1);
+DX_nom = zeros(ny,1);
+
+
 
 
 

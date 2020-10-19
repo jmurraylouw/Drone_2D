@@ -12,7 +12,7 @@ function setup(block)
     % Dialog parameters
     block.NumDialogPrms     = 6;
 
-    Ts      = block.DialogPrm(1).Data;
+    Ts_dmd  = block.DialogPrm(1).Data;
     ny      = block.DialogPrm(2).Data;
     nu      = block.DialogPrm(3).Data;
     N_train = block.DialogPrm(4).Data;
@@ -53,7 +53,7 @@ function setup(block)
     block.OutputPort(2).Dimensions       = [ny, (q-1)*ny + nu];
 
     % Sample time
-    block.SampleTimes = [Ts, 0]; % Set sample time
+    block.SampleTimes = [Ts_dmd, 0]; % Set sample time
 
     % Specify the block simStateCompliance. The allowed values are:
     %    'UnknownSimState', < The default setting; warn and assume DefaultSimState
@@ -77,7 +77,7 @@ function DoPostPropSetup(block)
     block.NumDworks = 2;
     
     % Dialog parameters
-    Ts      = block.DialogPrm(1).Data;
+    Ts_dmd  = block.DialogPrm(1).Data;
     ny      = block.DialogPrm(2).Data;
     nu      = block.DialogPrm(3).Data;
     N_train = block.DialogPrm(4).Data;
@@ -104,7 +104,7 @@ function DoPostPropSetup(block)
 
 function Start(block)
     % Dialog parameters
-    Ts      = block.DialogPrm(1).Data;
+    Ts_dmd  = block.DialogPrm(1).Data;
     ny      = block.DialogPrm(2).Data;
     nu      = block.DialogPrm(3).Data;
     N_train = block.DialogPrm(4).Data;
@@ -136,7 +136,7 @@ function Start(block)
 function Outputs(block)
 
     % Dialog parameters
-    Ts      = block.DialogPrm(1).Data;
+    Ts_dmd  = block.DialogPrm(1).Data;
     ny      = block.DialogPrm(2).Data;
     nu      = block.DialogPrm(3).Data;
     N_train = block.DialogPrm(4).Data;
@@ -174,8 +174,18 @@ function Outputs(block)
     A  = AB(:,1:ny); % Extract A matrix
     B  = AB(:,(ny+1):end);
 
+    % Reorder columns of B to [B(manipulated varaibles), B(delays)]
+%     B = [B((end - nu + 1):end,:), B(1:(end - nu),:)];
+    
     % Adjust slightly unstable eigenvalues
     A = stabilise(A,3);
+    
+    % Resample to correct sample time
+    % dmd_sys = ss(A,B,eye(ny),zeros(ny,(q-1)*ny + nu),Ts); % LTI system
+    % mpc_sys = d2d(dmd_sys,Ts_mpc,'zoh'); % Resample to match MPC
+    % 
+    % [A_mpc,B_mpc,C_mpc,D_mpc,~] = ssdata(mpc_sys); % Extract resampled matrixes
+    % mpc_sys = ss(A_mpc,B_mpc,C_mpc,D_mpc,Ts_mpc); % LTI system with new Ts 
     
     % Output
     block.OutputPort(1).Data = A;

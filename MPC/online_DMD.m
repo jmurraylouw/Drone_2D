@@ -64,7 +64,8 @@ Size = [N, length(VariableTypes)];
 results = table('Size',Size,'VariableTypes',VariableTypes,'VariableNames',VariableNames);
 emptry_row = 1; % Keep track of next empty row to insert results 
     
-for k = N_test:N - N_test
+% for k = N_test:N - N_test
+for k = N_test:20/Ts
     k
     tic;
     
