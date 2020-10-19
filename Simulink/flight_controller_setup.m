@@ -37,7 +37,7 @@ lambda = 0.985; % Exponential forgetting factor of moving average to smooth out 
 
 % Way points
 num_waypoints = 100; % Number of waypoints included in command
-point_time_interval = 6; % Initial interval between commands
+point_time_interval = 0; % Initial interval between commands
 
 waypoints = table('Size', [(num_waypoints+1)*2, 3], 'VariableTypes', ["double", "double", "double"]);
 waypoints.Properties.VariableNames = {'point_time', 'x_coord', 'z_coord'};
@@ -122,7 +122,7 @@ Ts_dmd = Ts_mpc; % Sample time of DMD
 y0 = x0([1,2,3],:); 
 % u0 = ; 
 N_train = 30/Ts_dmd; % Num of data samples for training 
-q = 10; 
+q = 6; 
 model_intervals = 10; 
 
 delays_0 = []; % Initial delay vector
@@ -131,6 +131,7 @@ for i = 1:q-1
 end
 
 % Initial LTI system 
+load('Data/MPC_initial_plant.mat');
 A_mpc = A;
 B_mpc = B;
 C_mpc = eye(ny);
@@ -149,7 +150,7 @@ mpc_drone_2d.ControlHorizon     = 5;
 mpc_drone_2d.PredictionHorizon  = 10;
 
 mpc_drone_2d.Weights.OutputVariables        = [1, 1, 0]*tuning_weight;
-mpc_drone_2d.Weights.ManipulatedVariables   = [0.1, 0.1]*tuning_weight; % Weights of delay coordinates to 0
+mpc_drone_2d.Weights.ManipulatedVariables   = [100, 100]*tuning_weight; % Weights of delay coordinates to 0
 mpc_drone_2d.W.ManipulatedVariablesRate     = [0.1, 0.1]/tuning_weight;
 
 % Nominal operating conditions for AMPC block

@@ -29,7 +29,7 @@ N  = length(t);     % Number of data samples
 N_train = 30/Ts; % Num of data samples for training
 N_test = 20; % Num of data samples for testing
 sigma = 0.001; % Noise standard deviation
-q = 10; % Override
+q = 6; % Override
 model_intervals = 10; % Only dod DMD every so many time-steps
 
 % Add noise
@@ -65,7 +65,7 @@ results = table('Size',Size,'VariableTypes',VariableTypes,'VariableNames',Variab
 emptry_row = 1; % Keep track of next empty row to insert results 
     
 % for k = N_test:N - N_test
-for k = N_test:20/Ts
+for k = N_test:55/Ts
     k
     tic;
     
@@ -104,7 +104,6 @@ for k = N_test:20/Ts
             y_run = y_data(:, k + (1:N_test));
             u_run = u_data(:, k + (1:N_test));
             t_run = t(:, k + (1:N_test));
-            N_run = length(y_run);
 
             % Initial condition
             y_hat_0 = y_data(:,k);
@@ -118,16 +117,16 @@ for k = N_test:20/Ts
             end
 
             % Run model
-            y_hat = zeros(ny,N_run); % Empty estimated Y
+            y_hat = zeros(ny,N_test); % Empty estimated Y
             y_hat(:,1) = y_hat_0; % Initial condition
-            for j = 1:N_run-1
+            for j = 1:N_test-1
                 upsilon = [y_delays; u_run(:,j)]; % Concat delays and control for use with B
                 y_hat(:,j+1) = A*y_hat(:,j) + B*upsilon;
                 y_delays = [y_hat(:,j); y_delays(1:(end-ny),:)]; % Add y(k) to y_delay for next step [y(k); y(k-1); ...]
             end
 
             % Vector of Mean Absolute Error on testing data
-            MAE = sum(abs(y_hat - y_run), 2)./N_run; % For each measured state
+            MAE = sum(abs(y_hat - y_run), 2)./N_test; % For each measured state
 
             % Save results
             results(emptry_row,:) = [{k, q, mean(MAE)}, num2cell(MAE')]; % add to table of results
@@ -135,9 +134,9 @@ for k = N_test:20/Ts
 
             % Plot and pause
             plot_and_pause = 0;
-            if plot_and_pause
+            if k == 55/Ts
                 clf('reset')
-    %             plot(t_run, y_run)
+                plot(t_run, y_run)
                 hold on;
                 plot(t_run, y_hat, '--')
                 hold off;
