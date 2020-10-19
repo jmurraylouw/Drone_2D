@@ -1,8 +1,10 @@
 function add_filler_reference(block)
 % Adds zeros to create correct dimension reference signal for MPC block
+% Connect input to y_reference and output to ref port of MPC
 % e.g. with q = 3 delays:
-% ref_ext = [0; 0; ref(k)]
-% Used with an MPC for a state-space model created with HAVOK
+% ref_ext = [ref(k); 0; 0]
+% Used with an MPC for a state-space model created with DMD
+% Parameters: ny, q, Ts_mpc
 
 	setup(block);
   
@@ -22,7 +24,7 @@ function setup(block)
     block.SetPreCompOutPortInfoToDynamic;
 
     %% Extract Dialog params
-    ny         = block.DialogPrm(1).Data;
+    ny        = block.DialogPrm(1).Data;
     q         = block.DialogPrm(2).Data;
     Ts_mpc    = block.DialogPrm(3).Data;
 
@@ -58,7 +60,7 @@ function Output(block)
     q         = block.DialogPrm(2).Data;
     
     ref = block.InputPort(1).Data; % Reference vector
-    ref_ext = [zeros((q-1)*ny,1); ref]; % Extended reference for output
+    ref_ext = [ref; zeros((q-1)*ny,1)]; % Extended reference for output
     
     block.OutputPort(1).Data = ref_ext;
   

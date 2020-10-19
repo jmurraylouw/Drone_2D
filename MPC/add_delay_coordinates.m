@@ -1,8 +1,9 @@
 function add_delay_coordinates(block)
 % Creates an extended state vector with current state and delay coordinates
 % e.g. with q = 3 delays:
-% x_ext = [x(k-2); x(k-1); x(k)]
+% x_ext = [x(k); x(k-1); x(k-2)]
 % Used with an MPC for a state-space model created with HAVOK
+% Parameters: y_ext_0, ny, q, Ts_mpc
 
 	setup(block);
   
@@ -23,7 +24,7 @@ function setup(block)
 
     %% Extract Dialog params
     %   x_ext_0   = block.DialogPrm(1).Data; % For reference sake
-    ny         = block.DialogPrm(2).Data;
+    ny        = block.DialogPrm(2).Data;
     q         = block.DialogPrm(3).Data;
     Ts_mpc    = block.DialogPrm(4).Data;
 
@@ -55,7 +56,7 @@ function DoPostPropSetup(block)
 
     %% Setup Dwork
     block.NumDworks = 1;
-    block.Dwork(1).Name = 'x_ext_prev'; % Previous x_ext
+    block.Dwork(1).Name = 'y_ext_prev'; % Previous x_ext
     block.Dwork(1).Dimensions      = q*ny;
     block.Dwork(1).DatatypeID      = 0;
     block.Dwork(1).Complexity      = 'Real';
@@ -66,7 +67,7 @@ function DoPostPropSetup(block)
 function InitConditions(block)
 
     %% Initialize Dwork
-    block.Dwork(1).Data = block.DialogPrm(1).Data; % x_ext_0
+    block.Dwork(1).Data = block.DialogPrm(1).Data; % y_ext_0
   
 %endfunction
 
@@ -74,13 +75,13 @@ function Output(block)
     %% Extract Dialog params
     ny        = block.DialogPrm(2).Data;
 
-    x = block.InputPort(1).Data; % Measurement vector
-    x_ext_prev = block.Dwork(1).Data; % Previous xtended measurement vector
-    x_ext = [x_ext_prev((ny+1):length(x_ext_prev)); x]; % Extended measurement vector for output, discard oldest delay, add new measurement
+    y = block.InputPort(1).Data; % Measurement vector
+    y_ext_prev = block.Dwork(1).Data; % Previous xtended measurement vector
+    y_ext = [y; y_ext_prev(1:length(y_ext_prev) - ny)]; % Extended measurement vector for output, discard oldest delay, add new measurement
     
-    block.OutputPort(1).Data = x_ext;
+    block.OutputPort(1).Data = y_ext;
     
-    block.Dwork(1).Data = x_ext; % Save current x_ext for next iteration
+    block.Dwork(1).Data = y_ext; % Save current x_ext for next iteration
   
 %endfunction
 
