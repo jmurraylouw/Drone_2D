@@ -110,9 +110,18 @@ if run_and_plot
     hold off;
 end % run_and_plot
 
-% Sample times
-Ts_mpc = 0.1; % Sample time of MPC (s)
-Ts_dmd = Ts_mpc; % Sample time of DMD
+% Initial LTI system 
+load('Data/MPC_initial_plant.mat'); % load A, B, Ts_dmd
+A_dmd = A;
+B_dmd = B;
+C_dmd = eye(ny);
+D_dmd = zeros(ny, (q-1)*ny + nu);
+dmd_sys = ss(A_dmd,B_dmd,C_dmd,D_dmd,Ts_dmd); % LTI system
+
+% Resample model to MPC sample time
+Ts_mpc = 0.1;
+mpc_sys = d2d(dmd_sys, Ts_mpc);
+[A_mpc,B_mpc,C_mpc,D_mpc,~] = ssdata(mpc_sys);
 
 % DMD parameters
 % Ts_dmd, ny, nu, x0, u0, N_train, q, model_intervals
@@ -130,14 +139,6 @@ for i = 1:q-1
     delays_0 = [delays_0; y0];
 end
 
-% Initial LTI system 
-load('Data/MPC_initial_plant.mat');
-A_mpc = A;
-B_mpc = B;
-C_mpc = eye(ny);
-D_mpc = zeros(ny, (q-1)*ny + nu);
-mpc_sys = ss(A_mpc,B_mpc,C_mpc,D_mpc,Ts_mpc); % LTI system
-
 % MPC object
 old_status = mpcverbosity('off'); % No display messages
 mpc_sys.InputGroup.MV = (q-1)*ny + (1:nu); % Munipulated Variable indices
@@ -146,12 +147,16 @@ mpc_sys.OutputGroup.MO = ny; % Measured Variable
 
 tuning_weight = 0.8; % Smaller = robust, Larger = aggressive
 mpc_drone_2d = mpc(mpc_sys,Ts_mpc);
-mpc_drone_2d.ControlHorizon     = 5;
-mpc_drone_2d.PredictionHorizon  = 10;
+
+t_s = 5; % Settling time (s)
+mpc_drone_2d.PredictionHorizon  = t_s/Ts_mpc; % Prediction horizon (samples), initial guess according to MATLAB: Choose Sample Time and Horizons
+mpc_drone_2d.ControlHorizon     = 2; % Control horizon (samples)
 
 mpc_drone_2d.Weights.OutputVariables        = [1, 1, 0]*tuning_weight;
-mpc_drone_2d.Weights.ManipulatedVariables   = [100, 100]*tuning_weight; % Weights of delay coordinates to 0
-mpc_drone_2d.W.ManipulatedVariablesRate     = [0.1, 0.1]/tuning_weight;
+mpc_drone_2d.Weights.ManipulatedVariables   = [0.1, 0.1]*tuning_weight; % Weights of delay coordinates to 0
+mpc_drone_2d.W.ManipulatedVariablesRate     = [0.01, 0.01]/tuning_weight;
+
+mpc_drone_2d % Display
 
 % Nominal operating conditions for AMPC block
 U_nom = [zeros((q-1)*ny,1); u_bar];
