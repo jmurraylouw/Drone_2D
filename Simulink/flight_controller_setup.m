@@ -11,13 +11,6 @@ x0 = zeros(nx,1); % Initial state
 y0 = zeros(ny,1); % Initial measurements
 u0 = [0; 0]; % Initial input
 
-% Initital conditions for extended measurment vector for MPC
-% All delay states are also at x0
-y_ext_0 = zeros(q*ny, 1); % Allocate space
-for row = 0:q-1 % First column of spaced Hankel matrix
-        y_ext_0(row*ny+1:(row+1)*ny, 1) = y0;
-end
-
 % Model parameters
 M     = 4.5; % Mass of drone body (at fulcrum)
 I_yy  = 0.235; % Moment of inertia of drone body about body x axis
@@ -110,8 +103,14 @@ if run_and_plot
     hold off;
 end % run_and_plot
 
-% Initial LTI system 
+% DMD parameters
+% Ts_dmd, ny, nu, x0, u0, N_train, q, model_intervals
 load('Data/MPC_initial_plant.mat'); % load A, B, Ts_dmd
+N_train = 30/Ts_dmd; % Num of data samples for training 
+q = 6; 
+model_intervals = 10; 
+
+% Initial LTI system 
 A_dmd = [A,       B(:, 1:end-nu);
          eye((q-1)*ny),   zeros((q-1)*ny,ny)];
 B_dmd = [B(:, end-nu+1:end); zeros((q-1)*ny, nu)];
@@ -120,20 +119,16 @@ D_dmd = zeros(q*ny, nu);
 dmd_sys = ss(A_dmd,B_dmd,C_dmd,D_dmd,Ts_dmd); % LTI system
 
 % Resample model to MPC sample time
-Ts_mpc = 0.2;
+Ts_mpc = 0.1;
 mpc_sys = d2d(dmd_sys, Ts_mpc);
 [A_mpc,B_mpc,C_mpc,D_mpc,~] = ssdata(mpc_sys);
 
-% DMD parameters
-% Ts_dmd, ny, nu, x0, u0, N_train, q, model_intervals
-% Ts_dmd
-% ny = ; 
-% nu = ; 
-y0 = x0([1,2,3],:); 
-% u0 = ; 
-N_train = 30/Ts_dmd; % Num of data samples for training 
-q = 6; 
-model_intervals = 10; 
+% Initital conditions for extended measurment vector for MPC
+% All delay states are also at y0
+y_ext_0 = zeros(q*ny, 1); % Allocate space
+for row = 0:q-1 % First column of spaced Hankel matrix
+        y_ext_0(row*ny+1:(row+1)*ny, 1) = y0;
+end
 
 delays_0 = []; % Initial delay vector
 for i = 1:q-1
@@ -143,43 +138,50 @@ end
 % MPC object
 old_status = mpcverbosity('off'); % No display messages
 mpc_sys.InputGroup.MV = 1:nu; % Munipulated Variable indices
-mpc_sys.OutputGroup.MO = q*ny; % Measured Variable
+mpc_sys.OutputGroup.MO = 1:q*ny; % Measured Output
 
-tuning_weight = 0.8; % Smaller = robust, Larger = aggressive
-% % % % mpc_drone_2d = mpc(mpc_sys,Ts_mpc);
+tuning_weight = 1; % Smaller = robust, Larger = aggressive
+mpc_drone_2d = mpc(mpc_sys,Ts_mpc);
 
 t_s = 4; % Settling time (s)
-% mpc_drone_2d.PredictionHorizon  = t_s/Ts_mpc; % Prediction horizon (samples), initial guess according to MATLAB: Choose Sample Time and Horizons
-% mpc_drone_2d.ControlHorizon     = 2; % Control horizon (samples)
-% 
-% mpc_drone_2d.Weights.OutputVariables        = [1, 1, 0, zeros(1, (q-1)*ny)]*tuning_weight;
-% mpc_drone_2d.Weights.ManipulatedVariables   = [0.1, 0.1]*tuning_weight; % Weights of delay coordinates to 0
-% mpc_drone_2d.W.ManipulatedVariablesRate     = [0.01, 0.01]/tuning_weight;
+mpc_drone_2d.PredictionHorizon  = t_s/Ts_mpc; % Prediction horizon (samples), initial guess according to MATLAB: Choose Sample Time and Horizons
+mpc_drone_2d.ControlHorizon     = 1; % Control horizon (samples)
 
-% Output Constraints
-theta_max = 30*(pi/180); % Anton's pitch command constraint
-theta_min = -theta_max;
+mpc_drone_2d.Weights.OutputVariables        = [1, 1, 0, zeros(1, (q-1)*ny)]*tuning_weight;
+mpc_drone_2d.Weights.ManipulatedVariables   = 1e-4*[1, 1]*tuning_weight; % Weights of delay coordinates to 0
+mpc_drone_2d.W.ManipulatedVariablesRate     = 1e-4*[1, 1]/tuning_weight;
 
-x_max = Inf;
-x_min = -Inf;
+% Output bounds
+theta_min = -30*(pi/180);
+theta_max = abs(theta_min); % Anton's pitch command constraint
 
-z_max = -2; % Do not go closer than 2 m to ground. ND: Negative z is up
-z_min = -Inf;
+mpc_drone_2d.OV(3).Min = theta_min;
+mpc_drone_2d.OV(3).Max = theta_max;
 
-% Input Constraints
-F_r_z_max = 2*(M); % ??? Assume designed for 2:1 power to weight ratio
-F_r_x_max = F_r_z_max*sin(theta_max);
+% Input bounds
 
-F_r_z_min = 0;
+% Normalised
+F_r_z_min = -150;
+F_r_z_max = 150; % ??? Assume designed for 2:1 power to weight ratio
+
+F_r_x_max = F_r_z_max;
 F_r_x_min = -F_r_x_max;
 
-mpc_drone_2d % Display
+mpc_drone_2d.MV(1).Min = F_r_x_min;
+mpc_drone_2d.MV(1).Max = F_r_x_max;
+
+mpc_drone_2d.MV(2).Min = F_r_z_min;
+mpc_drone_2d.MV(2).Max = F_r_z_max;
+
+% Display
+mpc_drone_2d 
 
 % Nominal operating conditions for AMPC block
-U_nom = [zeros((q-1)*ny,1); u_bar];
-X_nom = zeros(ny,1);
-Y_nom = zeros(ny,1);
-DX_nom = zeros(ny,1);
+u_bar = [0; M*g];
+U_nom = zeros(nu,1);
+X_nom = zeros(q*ny,1);
+Y_nom = zeros(q*ny,1);
+DX_nom = zeros(q*ny,1);
 
 
 

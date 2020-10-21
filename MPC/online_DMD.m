@@ -10,7 +10,7 @@ load(['Data/', simulation_data_file, '.mat']) % Load simulation data
 % Extract data
 u_data  = out.F_r.Data';
 x_data  = out.x.Data';
-y_data  = x_data([1,2,3],:); % Measurement data (x, z, theta)
+y_data  = x_data([1:6],:); % Measurement data (x, z, theta)
 t       = out.x.Time'; % Time
 
 % Adjust for constant disturbance / mean control values
@@ -28,7 +28,7 @@ Ts_dmd = Ts; % Sample time of resulting DMD system
 
 % Parameters
 N_train = 30/Ts; % Num of data samples for training
-N_test = 40; % Num of data samples for testing
+N_test = 10/Ts; % Num of data samples for testing
 sigma = 0.001; % Noise standard deviation
 q = 6; % Override
 model_intervals = 10; % Only dod DMD every so many time-steps
@@ -100,12 +100,7 @@ for k = N_test:51.59/Ts
 
         if (k > q) % Need initial conditions for delays        
         %% Run with A and x
-            % Start at end of initial condition k
-
-            if k == 55/Ts % ?? debug
-                N_test = 20/Ts;
-            end
-            
+            % Start at end of initial condition k           
             y_run = y_data(:, k + (1:N_test));
             u_run = u_data(:, k + (1:N_test));
             t_run = t(:, k + (1:N_test));
@@ -126,7 +121,7 @@ for k = N_test:51.59/Ts
             y_hat(:,1) = y_hat_0; % Initial condition
             for j = 1:N_test-1
                 upsilon = [y_delays; u_run(:,j)]; % Concat delays and control for use with B
-                y_hat(:,j+1) = A_mpc*y_hat(:,j) + B_mpc*upsilon;
+                y_hat(:,j+1) = A*y_hat(:,j) + B*upsilon;
                 y_delays = [y_hat(:,j); y_delays(1:(end-ny),:)]; % Add y(k) to y_delay for next step [y(k); y(k-1); ...]
             end
 
@@ -178,7 +173,7 @@ end
 %% MAE over all time steps
 valid_rows = find(results.k < N_train); % Only rows where full N_train sample were available for model
 valid_results = results(valid_rows,:);
-prev_MAE = total_MAE_mean
+% prev_MAE = total_MAE_mean
 total_MAE_mean = mean(valid_results.MAE_mean)
 
 %%

@@ -73,9 +73,10 @@ function InitConditions(block)
 
 function Output(block)
     %% Extract Dialog params
-    ny        = block.DialogPrm(2).Data;
+    ny = block.DialogPrm(2).Data;
 
     y = block.InputPort(1).Data; % Measurement vector
+    
     y_ext_prev = block.Dwork(1).Data; % Previous xtended measurement vector
     y_ext = [y; y_ext_prev(1:length(y_ext_prev) - ny)]; % Extended measurement vector for output, discard oldest delay, add new measurement
     
