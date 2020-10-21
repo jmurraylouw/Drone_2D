@@ -113,15 +113,22 @@ model_intervals = 10;
 % Initial LTI system 
 A_dmd = [A,       B(:, 1:end-nu);
          eye((q-1)*ny),   zeros((q-1)*ny,ny)];
-B_dmd = [B(:, end-nu+1:end); zeros((q-1)*ny, nu)];
+
+CO = 2; % number of Controlled Outputs (x and z)
+dist_influence = 2e-5;
+B_ud = dist_influence*[eye(CO); zeros(q*ny - CO, CO)]; % B of unmeasured disturbance, for distrubance force in x and z
+B_dmd = [[B(:, end-nu+1:end); zeros((q-1)*ny, nu)], B_ud];
 C_dmd = eye(q*ny);
-D_dmd = zeros(q*ny, nu);
+D_dmd = zeros(q*ny, nu + CO);
 dmd_sys = ss(A_dmd,B_dmd,C_dmd,D_dmd,Ts_dmd); % LTI system
 
 % Resample model to MPC sample time
-Ts_mpc = 0.1;
+Ts_mpc = 0.15;
 mpc_sys = d2d(dmd_sys, Ts_mpc);
 [A_mpc,B_mpc,C_mpc,D_mpc,~] = ssdata(mpc_sys);
+
+% ???? structure of A and B changing when resampled. Maybe add zeros and
+% eye() after resample
 
 % Initital conditions for extended measurment vector for MPC
 % All delay states are also at y0
@@ -137,19 +144,21 @@ end
 
 % MPC object
 old_status = mpcverbosity('off'); % No display messages
-mpc_sys.InputGroup.MV = 1:nu; % Munipulated Variable indices
 mpc_sys.OutputGroup.MO = 1:q*ny; % Measured Output
+
+mpc_sys.InputGroup.MV = 1:nu; % Munipulated Variable indices
+mpc_sys.InputGroup.UD = nu + (1:CO); % unmeasured disturbance indices, one for each 
 
 tuning_weight = 1; % Smaller = robust, Larger = aggressive
 mpc_drone_2d = mpc(mpc_sys,Ts_mpc);
 
-t_s = 4; % Settling time (s)
-mpc_drone_2d.PredictionHorizon  = 20; %t_s/Ts_mpc; % Prediction horizon (samples), initial guess according to MATLAB: Choose Sample Time and Horizons
-mpc_drone_2d.ControlHorizon     = 1; % Control horizon (samples)
+t_s = 6; % Settling time (s)
+mpc_drone_2d.PredictionHorizon  = 28; %t_s/Ts_mpc; % Prediction horizon (samples), initial guess according to MATLAB: Choose Sample Time and Horizons
+mpc_drone_2d.ControlHorizon     = 2; % Control horizon (samples)
 
-mpc_drone_2d.Weights.OutputVariables        = 1e5*[1, 1, 0, zeros(1, (q-1)*ny)]*tuning_weight;
-mpc_drone_2d.Weights.ManipulatedVariables   = 1e-6*[1, 1]*tuning_weight; % Weights of delay coordinates to 0
-mpc_drone_2d.W.ManipulatedVariablesRate     = 1e-8*[1, 1]/tuning_weight;
+mpc_drone_2d.Weights.OutputVariables        = 5*[1, 3, 0, zeros(1, (q-1)*ny)]*tuning_weight;
+mpc_drone_2d.Weights.ManipulatedVariables   = 1e-3*[1, 1]*tuning_weight; % Weights of delay coordinates to 0
+mpc_drone_2d.W.ManipulatedVariablesRate     = 1e0*[1, 1]/tuning_weight;
 
 % Output bounds
 theta_min = -30*(pi/180);
@@ -161,8 +170,8 @@ mpc_drone_2d.OV(3).Max = theta_max;
 % Input bounds
 
 % Normalised
-F_r_z_min = -200;
-F_r_z_max = 200; % ??? Assume designed for 2:1 power to weight ratio
+F_r_z_min = -100;
+F_r_z_max = 100; % ??? Assume designed for 2:1 power to weight ratio
 
 F_r_x_max = F_r_z_max;
 F_r_x_min = -F_r_x_max;
