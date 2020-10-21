@@ -42,7 +42,7 @@ waypoints(2,:) = table(point_time_interval, x_coord, z_coord); % Initial point f
 
 x_min        = -10;     x_max        = 10; % (m) minimum and maximum coordinates for waypoints
 z_min        = -25;     z_max        = -5;
-interval_min = 2;       interval_max = 8;  % (s) minimum and maximum time interval between commands
+interval_min = 10;       interval_max = 20;  % (s) minimum and maximum TIME interval between commands
 
 point_time = point_time_interval;
 rng(0); % Initialise random number generator for repeatability
@@ -144,12 +144,12 @@ tuning_weight = 1; % Smaller = robust, Larger = aggressive
 mpc_drone_2d = mpc(mpc_sys,Ts_mpc);
 
 t_s = 4; % Settling time (s)
-mpc_drone_2d.PredictionHorizon  = t_s/Ts_mpc; % Prediction horizon (samples), initial guess according to MATLAB: Choose Sample Time and Horizons
+mpc_drone_2d.PredictionHorizon  = 20; %t_s/Ts_mpc; % Prediction horizon (samples), initial guess according to MATLAB: Choose Sample Time and Horizons
 mpc_drone_2d.ControlHorizon     = 1; % Control horizon (samples)
 
-mpc_drone_2d.Weights.OutputVariables        = [1, 1, 0, zeros(1, (q-1)*ny)]*tuning_weight;
-mpc_drone_2d.Weights.ManipulatedVariables   = 1e-4*[1, 1]*tuning_weight; % Weights of delay coordinates to 0
-mpc_drone_2d.W.ManipulatedVariablesRate     = 1e-4*[1, 1]/tuning_weight;
+mpc_drone_2d.Weights.OutputVariables        = 1e5*[1, 1, 0, zeros(1, (q-1)*ny)]*tuning_weight;
+mpc_drone_2d.Weights.ManipulatedVariables   = 1e-6*[1, 1]*tuning_weight; % Weights of delay coordinates to 0
+mpc_drone_2d.W.ManipulatedVariablesRate     = 1e-8*[1, 1]/tuning_weight;
 
 % Output bounds
 theta_min = -30*(pi/180);
@@ -161,8 +161,8 @@ mpc_drone_2d.OV(3).Max = theta_max;
 % Input bounds
 
 % Normalised
-F_r_z_min = -150;
-F_r_z_max = 150; % ??? Assume designed for 2:1 power to weight ratio
+F_r_z_min = -200;
+F_r_z_max = 200; % ??? Assume designed for 2:1 power to weight ratio
 
 F_r_x_max = F_r_z_max;
 F_r_x_min = -F_r_x_max;
