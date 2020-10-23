@@ -133,6 +133,26 @@ C_mpc = eye(q*ny);
 D_mpc = zeros(q*ny, nu + CO);
 mpc_sys = ss(A_mpc,B_mpc,C_mpc,D_mpc,Ts_mpc); % LTI system
 
+% % Code from when MPC was working:
+% % Initial LTI system 
+% A_dmd = [A,       B(:, 1:end-nu);
+%          eye((q-1)*ny),   zeros((q-1)*ny,ny)];
+% 
+% CO = 2; % number of Controlled Outputs (x and z)
+% dist_influence = 2e-5;
+% B_ud = dist_influence*[eye(CO); zeros(q*ny - CO, CO)]; % B of unmeasured disturbance, for distrubance force in x and z
+% B_dmd = [[B(:, end-nu+1:end); zeros((q-1)*ny, nu)], B_ud];
+% C_dmd = eye(q*ny);
+% D_dmd = zeros(q*ny, nu + CO);
+% dmd_sys = ss(A_dmd,B_dmd,C_dmd,D_dmd,Ts_dmd); % LTI system
+% 
+% % Resample model to MPC sample time
+% Ts_mpc = 0.15;
+% mpc_sys = d2d(dmd_sys, Ts_mpc);
+% [A_mpc,B_mpc,C_mpc,D_mpc,~] = ssdata(mpc_sys);
+
+
+
 % Initital conditions for extended measurment vector for MPC
 % All delay states are also at y0
 y_ext_0 = zeros(q*ny, 1); % Allocate space

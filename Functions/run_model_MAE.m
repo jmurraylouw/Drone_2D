@@ -5,7 +5,7 @@ load(['Data/', simulation_data_file, '.mat']) % Load simulation data
 % Desired sampling time
 Ts = Ts_mpc;
 
-% Resample time series to needed sample time
+% Resample time series to desired sample time
 x_resamp = resample(out.x, 0:Ts:out.x.Time(end));  
 u_resamp = resample(out.F_r, 0:Ts:out.x.Time(end));  
 
@@ -28,7 +28,7 @@ plot_results = 1;
 
 % NB: Ensure u_data and System matrices use same sample time
 % results = model_MAE_accross_data(y_data, u_data, t, A_mpc, B_mpc(:, 1:nu), q, N_test, 'delay_A', pause_and_plot, plot_results);
-results = model_MAE_accross_data(y_data, u_data, t, A_resamp, B_resamp, q, N_test, 'delay_B', pause_and_plot, plot_results);
+results = model_MAE_accross_data(y_data, u_data, t, A, B, q, N_test, 'delay_B', pause_and_plot, plot_results);
 
 % ???? Model and data is with different time scale
 

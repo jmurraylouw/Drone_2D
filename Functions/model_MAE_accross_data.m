@@ -83,7 +83,7 @@ for k = 1:length(t)
         figure(1)
         hold on;
         plot(t_run, y_run)
-        threshold = 20; % for if y_hat is unstable
+        threshold = 2*max(max(abs(y_data))); % for if y_hat is unstable
         y_hat(y_hat > threshold) = threshold;
         y_hat(y_hat < -threshold) = -threshold;
         plot(t_run, y_hat, '--', 'LineWidth', 1)
