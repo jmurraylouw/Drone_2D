@@ -3,7 +3,7 @@ simulation_data_file = 'No_payload_data_6';
 load(['Data/', simulation_data_file, '.mat']) % Load simulation data
 
 % Desired sampling time
-Ts = Ts_mpc;
+Ts = 0.01;
 
 % Resample time series to desired sample time
 x_resamp = resample(out.x, 0:Ts:out.x.Time(end));  

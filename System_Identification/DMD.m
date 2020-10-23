@@ -1,14 +1,20 @@
 %% Implentation of DMD for 2D Drone
 close all;
 
+% Load simulation data
 simulation_data_file = 'No_payload_data_5';
 load(['Data/', simulation_data_file, '.mat']) % Load simulation data
 
+% Resample time series to desired sample time
+Ts = 0.01;     % Desired sample time of data
+x_resamp = resample(out.x,   0:Ts:out.x.Time(end));  
+u_resamp = resample(out.F_r, 0:Ts:out.x.Time(end));  
+
 % Extract data
-u_data  = out.F_r.Data';
-x_data  = out.x.Data';
-y_data  = x_data([1,2,3],:); % Measurement data (x, z, theta)
-t       = out.x.Time'; % Time
+u_data  = u_resamp.Data';
+x_data  = x_resamp.Data';
+y_data  = x_data(1:3,:); % Measurement data
+t       = x_resamp.Time'; % Time
 
 u_data_org = u_data;
 % Adjust for constant disturbance / mean control values
@@ -27,7 +33,6 @@ t_test = t(:,end-N_test+1:end);
 nx = size(x_data,1); % number of states
 ny = size(y_data,1); % number of measurements
 nu = size(u_data,1); % number of inputs
-Ts = t(2)-t(1)     % Sample time of data
 N  = length(t);     % Number of data samples
 
 % Add noise
@@ -38,7 +43,7 @@ y_data_noise = y_data + sigma*randn(size(y_data));
 
 % Training data - Last sample of training is first sample of testing
 N_train = 5000; % Number of sampels in training data
-y_train = y_data_noise(:,end-N_test-N_train+2:end-N_test+1); % Use noisy data
+y_train = y_data_noise(:, end-N_test-N_train+2:end-N_test+1); % Use noisy data
 u_train = u_data(:,end-N_test-N_train+2:end-N_test+1);
 t_train = t(:,end-N_test-N_train+2:end-N_test+1);
 
@@ -59,7 +64,7 @@ end
 % q = double(best_results.q);
 % p = double(best_results.p);
 
-q = 20; % Override
+q = 6; % Override
 
 w = N_train - q + 1; % num columns of Hankel matrix
 
