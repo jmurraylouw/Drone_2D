@@ -2,18 +2,18 @@
 close all;
 
 % Load simulation data
-simulation_data_file = 'No_payload_data_5';
+simulation_data_file = 'No_payload_data_6';
 load(['Data/', simulation_data_file, '.mat']) % Load simulation data
 
 % Resample time series to desired sample time
-Ts = 0.01;     % Desired sample time of data
+Ts = 0.02;     % Desired sample time of data
 x_resamp = resample(out.x,   0:Ts:out.x.Time(end));  
 u_resamp = resample(out.F_r, 0:Ts:out.x.Time(end));  
 
 % Extract data
 u_data  = u_resamp.Data';
 x_data  = x_resamp.Data';
-y_data  = x_data(1:3,:); % Measurement data
+y_data  = x_data(1:end,:); % Measurement data
 t       = x_resamp.Time'; % Time
 
 u_data_org = u_data;
@@ -42,7 +42,7 @@ sigma = 0.001; % Noise standard deviation
 y_data_noise = y_data + sigma*randn(size(y_data));
 
 % Training data - Last sample of training is first sample of testing
-N_train = 5000; % Number of sampels in training data
+N_train = 30/Ts % Number of sampels in training data
 y_train = y_data_noise(:, end-N_test-N_train+2:end-N_test+1); % Use noisy data
 u_train = u_data(:,end-N_test-N_train+2:end-N_test+1);
 t_train = t(:,end-N_test-N_train+2:end-N_test+1);
@@ -64,20 +64,25 @@ end
 % q = double(best_results.q);
 % p = double(best_results.p);
 
-q = 6; % Override
+q = 10; % Override
 
 w = N_train - q + 1; % num columns of Hankel matrix
 
-% Hankel matrix with delay measurements
-Upsilon = zeros((q-1)*ny,w); % Augmented state with delay coordinates [...; Y(k-2); Y(k-1); Y(k)]
-for row = 0:q-2 % Add delay coordinates
-    Upsilon((end - ny*(row+1) + 1):(end - ny*row), :) = y_train(:, row + (1:w));
+if q == 1
+    Upsilon = u_train(:, q:end);
+else
+    % Hankel matrix with delay measurements
+    Upsilon = zeros((q-1)*ny,w); % Augmented state with delay coordinates [...; Y(k-2); Y(k-1); Y(k)]
+    for row = 0:q-2 % Add delay coordinates
+        Upsilon((end - ny*(row+1) + 1):(end - ny*row), :) = y_train(:, row + (1:w));
+    end
+
+    % Matrix with time series of states
+    Y = y_train(:, q-1 + (1:w));
+
+    Upsilon = [Upsilon; u_train(:, q:end)]; % Leave out last time step to match V_til_1
 end
 
-% Matrix with time series of states
-Y = y_train(:, q-1 + (1:w));
-
-Upsilon = [Upsilon; u_train(:, q:end)]; % Leave out last time step to match V_til_1
 YU_bar = [Y; Upsilon];
 
 % DMD of Y
@@ -95,8 +100,8 @@ B  = AB(:,(ny+1):end);
 
 %% Run with A and x
 
-k_start = 5000; % k from where to start applying model
-N_test = 1000; % Number of data points to run and test for
+k_start = 25/Ts; % k from where to start applying model
+N_test = 10/Ts; % Number of data points to run and test for
 
 % Start at end of initial condition k
 y_run = y_data(:, k_start + (1:N_test));
@@ -121,7 +126,9 @@ y_hat(:,1) = y_hat_0; % Initial condition
 for k = 1:N_run-1
     upsilon = [y_delays; u_run(:,k)]; % Concat delays and control for use with B
     y_hat(:,k+1) = A*y_hat(:,k) + B*upsilon;
-    y_delays = [y_hat(:,k); y_delays(1:(end-ny),:)]; % Add y(k) to y_delay for next step [y(k); y(k-1); ...]
+    if q ~= 1
+        y_delays = [y_hat(:,k); y_delays(1:(end-ny),:)]; % Add y(k) to y_delay for next step [y(k); y(k-1); ...]
+    end
 end
 
 % Vector of Mean Absolute Error on testing data

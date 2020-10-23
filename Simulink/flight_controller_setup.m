@@ -105,9 +105,10 @@ end % run_and_plot
 
 % DMD parameters
 % Ts_dmd, ny, nu, x0, u0, N_train, q, model_intervals
-load('Data/MPC_initial_plant.mat'); % load A_dmd, B_dmd, Ts_dmd from a previous DMD run
-N_train = 30/Ts_dmd; % Num of data samples for training 
-q = 6; 
+% load('Data/MPC_initial_plant.mat'); % load A_dmd, B_dmd, q, Ts_dmd from a previous DMD run
+A_dmd = A;
+B_dmd = B;
+
 model_intervals = 10; 
 
 C_dmd = eye(ny);

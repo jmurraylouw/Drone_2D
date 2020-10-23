@@ -1,4 +1,4 @@
-function results = model_MAE_accross_data(y_data, u_data, t, A, B, q, N_test, model_type, plot_and_pause, plot_results)
+function results = model_MAE_accross_data(out, A, B, q, N_test, model_type, plot_and_pause, plot_results)
 %% Get Mean Absolute Error of model predicted forward by N_test 
 %% from every time step in dataset
 % i.e. Evaluate performance of model at different times during simulation
@@ -11,6 +11,21 @@ function results = model_MAE_accross_data(y_data, u_data, t, A, B, q, N_test, mo
 % q       = number of delays in model
 % N_test  = number of data samples to predict forward when calculating MAE
 % model_type = 'delay_A' for delays accounted for in A, or 'delay_B'
+
+% Resample time series to desired sample time
+x_resamp = resample(out.x, 0:Ts:out.x.Time(end));  
+u_resamp = resample(out.F_r, 0:Ts:out.x.Time(end));  
+
+% Extract data
+u_data  = u_resamp.Data';
+x_data  = x_resamp.Data';
+y_data  = x_data(1:3,:); % Measurement data (x, z, theta)
+t       = x_resamp.Time'; % Time
+
+% Adjust for constant disturbance / mean control values
+u_bar = mean(u_data,2); % Input needed to keep at a fixed point
+% u_bar = [0; -4.5*9.81];
+u_data  = u_data - u_bar; % Adjust for unmeasured input
 
 N = length(t); % Total number of data samples
 ny = size(y_data,1);
@@ -80,18 +95,20 @@ for k = 1:length(t)
 
     % Plot and pause at every timestep
     if plot_and_pause
-        figure(1)
-        hold on;
-        plot(t_run, y_run)
-        threshold = 2*max(max(abs(y_data))); % for if y_hat is unstable
-        y_hat(y_hat > threshold) = threshold;
-        y_hat(y_hat < -threshold) = -threshold;
-        plot(t_run, y_hat, '--', 'LineWidth', 1)
-        hold off;
-        disp('Pausing... Press enter to continue')
-        pause
-        clf('reset')
-        disp('Continuing...')
+        if mod(k, 100) == 0
+            figure(1)
+            hold on;
+            plot(t_run, y_run)
+            threshold = 2*max(max(abs(y_data))); % for if y_hat is unstable
+            y_hat(y_hat > threshold) = threshold;
+            y_hat(y_hat < -threshold) = -threshold;
+            plot(t_run, y_hat, '--', 'LineWidth', 1)
+            hold off;
+            disp('Pausing... Press enter to continue')
+            pause
+            clf('reset')
+            disp('Continuing...')
+        end
     end
     
 end % k
