@@ -1,4 +1,4 @@
-function results = model_MAE_accross_data(y_data, u_data, t, A, B, N_test, model_type, plot_and_pause, plot_results)
+function results = model_MAE_accross_data(y_data, u_data, t, A, B, q, N_test, model_type, plot_and_pause, plot_results)
 %% Get Mean Absolute Error of model predicted forward by N_test 
 %% from every time step in dataset
 % i.e. Evaluate performance of model at different times during simulation
@@ -8,11 +8,12 @@ function results = model_MAE_accross_data(y_data, u_data, t, A, B, N_test, model
 % t       = time data of sim
 % A       = System matrix of model
 % B       = input matrix of model
+% q       = number of delays in model
 % N_test  = number of data samples to predict forward when calculating MAE
 % model_type = 'delay_A' for delays accounted for in A, or 'delay_B'
 
+N = length(t); % Total number of data samples
 ny = size(y_data,1);
-q = size(A,1)/ny; % Number of delay coordinates in model
 
 % Create empty results table
 VariableTypes = {'int16', 'double'}; % id, q, MAE_mean
@@ -64,6 +65,10 @@ for k = 1:length(t)
                 y_hat(:,j+1) = A*y_hat(:,j) + B*upsilon;
                 y_delays = [y_hat(:,j); y_delays(1:(end-ny),:)]; % Add y(k) to y_delay for next step [y(k); y(k-1); ...]
             end
+            
+        otherwise
+            error("Use either 'delay_A' or 'delay_B' ")
+            
     end % switch
 
     % Vector of Mean Absolute Error on testing data
@@ -75,12 +80,17 @@ for k = 1:length(t)
 
     % Plot and pause at every timestep
     if plot_and_pause
-        plot(t_run, y_run)
+        figure(1)
         hold on;
-        plot(t_run, y_hat, '--')
+        plot(t_run, y_run)
+        threshold = 20; % for if y_hat is unstable
+        y_hat(y_hat > threshold) = threshold;
+        y_hat(y_hat < -threshold) = -threshold;
+        plot(t_run, y_hat, '--', 'LineWidth', 1)
         hold off;
         disp('Pausing... Press enter to continue')
         pause
+        clf('reset')
         disp('Continuing...')
     end
     
