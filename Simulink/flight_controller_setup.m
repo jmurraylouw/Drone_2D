@@ -110,25 +110,28 @@ N_train = 30/Ts_dmd; % Num of data samples for training
 q = 6; 
 model_intervals = 10; 
 
-% Resample model to MPC sample time
-Ts_mpc = 0.15;
-mpc_sys = d2d(dmd_sys, Ts_mpc);
-[A_mpc,B_mpc,C_mpc,D_mpc,~] = ssdata(mpc_sys);
-
-% Initial LTI system 
-A_dmd = [A,       B(:, 1:end-nu);
-         eye((q-1)*ny),   zeros((q-1)*ny,ny)];
-
-CO = 2; % number of Controlled Outputs (x and z)
-dist_influence = 2e-5; % Disturbances include uncertainty in model
-B_ud = dist_influence*[eye(CO); zeros(q*ny - CO, CO)]; % B of unmeasured disturbance, for distrubance force in x and z
-B_dmd = [[B(:, end-nu+1:end); zeros((q-1)*ny, nu)], B_ud];
-C_dmd = eye(q*ny);
-D_dmd = zeros(q*ny, nu + CO);
+C_dmd = eye(ny);
+D_dmd = zeros(size(B_dmd));
 dmd_sys = ss(A_dmd,B_dmd,C_dmd,D_dmd,Ts_dmd); % LTI system
 
-% ???? structure of A and B changing when resampled. Maybe add zeros and
-% eye() after resample
+% Resample model to MPC sample time
+Ts_mpc = 0.15; % Sample time of MPC
+resamp_sys = d2d(dmd_sys, Ts_mpc); % ZOH method, so C and D keep correct structure
+[A_resamp,B_resamp,C_resamp,D_resamp,~] = ssdata(resamp_sys); % Resampled dmd system
+
+% Disturbance model to account for model uncertainty (eliminate steady-state error)
+CO = 2; % number of Controlled Outputs (x and z). theta is not controlled to a reference
+dist_influence = 2e-5; % Disturbances include uncertainty in model
+B_ud = dist_influence*[eye(CO); zeros(q*ny - CO, CO)]; % B of unmeasured disturbance, for distrubance force in x and z
+
+% Change model structure so delays are included in A, not B 
+A_mpc = [A_resamp,       B_resamp(:, 1:end-nu);
+         eye((q-1)*ny),   zeros((q-1)*ny,ny)];
+
+B_mpc = [[B_resamp(:, end-nu+1:end); zeros((q-1)*ny, nu)], B_ud];
+C_mpc = eye(q*ny);
+D_mpc = zeros(q*ny, nu + CO);
+mpc_sys = ss(A_mpc,B_mpc,C_mpc,D_mpc,Ts_mpc); % LTI system
 
 % Initital conditions for extended measurment vector for MPC
 % All delay states are also at y0
