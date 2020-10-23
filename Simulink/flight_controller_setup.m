@@ -105,27 +105,27 @@ end % run_and_plot
 
 % DMD parameters
 % Ts_dmd, ny, nu, x0, u0, N_train, q, model_intervals
-load('Data/MPC_initial_plant.mat'); % load A, B, Ts_dmd
+load('Data/MPC_initial_plant.mat'); % load A_dmd, B_dmd, Ts_dmd from a previous DMD run
 N_train = 30/Ts_dmd; % Num of data samples for training 
 q = 6; 
 model_intervals = 10; 
+
+% Resample model to MPC sample time
+Ts_mpc = 0.15;
+mpc_sys = d2d(dmd_sys, Ts_mpc);
+[A_mpc,B_mpc,C_mpc,D_mpc,~] = ssdata(mpc_sys);
 
 % Initial LTI system 
 A_dmd = [A,       B(:, 1:end-nu);
          eye((q-1)*ny),   zeros((q-1)*ny,ny)];
 
 CO = 2; % number of Controlled Outputs (x and z)
-dist_influence = 2e-5;
+dist_influence = 2e-5; % Disturbances include uncertainty in model
 B_ud = dist_influence*[eye(CO); zeros(q*ny - CO, CO)]; % B of unmeasured disturbance, for distrubance force in x and z
 B_dmd = [[B(:, end-nu+1:end); zeros((q-1)*ny, nu)], B_ud];
 C_dmd = eye(q*ny);
 D_dmd = zeros(q*ny, nu + CO);
 dmd_sys = ss(A_dmd,B_dmd,C_dmd,D_dmd,Ts_dmd); % LTI system
-
-% Resample model to MPC sample time
-Ts_mpc = 0.15;
-mpc_sys = d2d(dmd_sys, Ts_mpc);
-[A_mpc,B_mpc,C_mpc,D_mpc,~] = ssdata(mpc_sys);
 
 % ???? structure of A and B changing when resampled. Maybe add zeros and
 % eye() after resample
@@ -158,7 +158,7 @@ mpc_drone_2d.ControlHorizon     = 2; % Control horizon (samples)
 
 mpc_drone_2d.Weights.OutputVariables        = 5*[1, 3, 0, zeros(1, (q-1)*ny)]*tuning_weight;
 mpc_drone_2d.Weights.ManipulatedVariables   = 1e-3*[1, 1]*tuning_weight; % Weights of delay coordinates to 0
-mpc_drone_2d.W.ManipulatedVariablesRate     = 1e0*[1, 1]/tuning_weight;
+mpc_drone_2d.Weights.ManipulatedVariablesRate     = 1e0*[1, 1]/tuning_weight;
 
 % Output bounds
 theta_min = -30*(pi/180);
