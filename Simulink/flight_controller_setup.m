@@ -63,19 +63,24 @@ waypoints_ts = timeseries([waypoints.x_coord, waypoints.z_coord], waypoints.poin
 % DMD parameters
 % Ts_dmd, ny, nu, x0, u0, N_train, q, model_intervals
 % load('Data/MPC_initial_plant.mat'); % load A_dmd, B_dmd, q, Ts_dmd from a previous DMD run
-A_dmd = A;
-B_dmd = B;
+% model_intervals = 10; 
 
-model_intervals = 10; 
+% Sample time of MPC:
+Ts_mpc = 0.15; 
 
+% DMD model (with MPC sample time)
+simulation_data_file = 'No_payload_data_1';
+load(['Data/', simulation_data_file, '.mat']) % Load simulation data
+start_time = 50;
+end_time = 100;
+q = 2;
+y_rows = 1:3;
+sigma = 0;
+
+[A_dmd, B_dmd] = model_DMD(out, start_time, end_time, Ts_mpc, q, y_rows, sigma);
 C_dmd = eye(ny);
 D_dmd = zeros(size(B_dmd));
 dmd_sys = ss(A_dmd,B_dmd,C_dmd,D_dmd,Ts_dmd); % LTI system
-
-% Resample model to MPC sample time
-Ts_mpc = 0.15; % Sample time of MPC
-resamp_sys = d2d(dmd_sys, Ts_mpc); % ZOH method, so C and D keep correct structure
-[A_resamp,B_resamp,C_resamp,D_resamp,~] = ssdata(resamp_sys); % Resampled dmd system
 
 % Disturbance model to account for model uncertainty (eliminate steady-state error)
 CO = 2; % number of Controlled Outputs (x and z). theta is not controlled to a reference
