@@ -7,9 +7,8 @@ Ts = Ts_mpc;
 N_test = 100;
 pause_and_plot = 1;
 plot_results = 1;
-model_type = 'delay_A';
-% A = A_dmd;
-% B = B_dmd;
+model_type = 'delay_B';
+
 
 % Resample time series to desired sample time
 x_resamp = resample(out.x, 0:Ts:out.x.Time(end));  

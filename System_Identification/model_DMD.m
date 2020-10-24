@@ -1,4 +1,4 @@
-function [A, B] = model_DMD(out, start_time, end_time, Ts, q, y_rows, sigma, varargin)
+function [A, B] = model_DMD(out, start_time, end_time, Ts, q, y_rows, sigma, plot_prediction, varargin)
 %% Generate a DMD model from simulation data with specific Ts and q
 % A = discrete state-space system matrix
 % B = input matrix
@@ -17,13 +17,14 @@ function [A, B] = model_DMD(out, start_time, end_time, Ts, q, y_rows, sigma, var
 
 % Resample time series to desired sample time and training period
 x_resamp = resample(out.x, start_time:Ts:end_time);  
-u_resamp = resample(out.F_r, start_time:Ts:end_time);  
+u_resamp = resample(out.u, start_time:Ts:end_time);  
 
 % Extract data
 u_train  = u_resamp.Data';
 x_train  = x_resamp.Data';
 y_train  = x_train(y_rows,:); % Measurement data
-N_train = size(y_train,2); % Number of sampels in training data
+N_train  = size(y_train,2); % Number of sampels in training data
+t        = x_resamp.Time;
 
 % Add noise
 rng('default');
@@ -54,11 +55,12 @@ else
         Upsilon((end - ny*(row+1) + 1):(end - ny*row), :) = y_train(:, row + (1:w));
     end
 
-    % Matrix with time series of states
-    Y = y_train(:, q-1 + (1:w));
 
     Upsilon = [Upsilon; u_train(:, q:end)]; % Leave out last time step to match V_til_1
 end
+
+% Matrix with time series of states
+Y = y_train(:, q-1 + (1:w));
 
 % DMD of Y
 Y2 = Y(:, 2:end  );
@@ -70,7 +72,55 @@ AB = Y2*pinv(YU); % combined A and B matrix, side by side
 % System matrixes from DMD
 A  = AB(:,1:ny); % Extract A matrix
 B  = AB(:,(ny+1):end);
-A = stabilise(A,3);
+% A = stabilise(A,1);
+
+%% Run with A and x
+if plot_prediction
+    k_start = q+1; % k from where to start applying model
+    N_test = N_train-k_start-1; % Number of data points to run and test for
+
+    % Start at end of initial condition k
+    y_run = y_train(:, k_start + (1:N_test));
+    u_run = u_train(:, k_start + (1:N_test));
+    t_run = t(k_start + (1:N_test));
+    N_run = length(y_run);
+
+    % Initial condition
+    y_hat_0 = y_train(:,k_start);
+
+    % Initial delay coordinates
+    y_delays = zeros((q-1)*ny,1);
+    k = k_start; % index of y_data
+    for i = 1:ny:ny*(q-1) % index of y_delays
+        k = k - 1; % previosu index of y_data
+        y_delays(i:(i+ny-1)) = y_train(:,k);
+    end
+
+    % Run model
+    y_hat = zeros(ny,N_run); % Empty estimated Y
+    y_hat(:,1) = y_hat_0; % Initial condition
+    for k = 1:N_run-1
+        upsilon = [y_delays; u_run(:,k)]; % Concat delays and control for use with B
+        y_hat(:,k+1) = A*y_hat(:,k) + B*upsilon;
+        if q ~= 1
+            y_delays = [y_hat(:,k); y_delays(1:(end-ny),:)]; % Add y(k) to y_delay for next step [y(k); y(k-1); ...]
+        end
+    end
+
+    % Vector of Mean Absolute Error on testing data
+    MAE = sum(abs(y_hat - y_run), 2)./N_run % For each measured state
+
+    %% Plot data vs model
+    figure;
+    plot(t_run, y_run);
+    hold on;
+
+    plot(t_run, y_hat, '--', 'LineWidth', 1); % Plot only non-delay coordinate
+    title('Training data vs Model');
+    legend()
+    hold off;
+
+end
 
 function A = stabilise(A_unstable,max_iterations)
     % If some eigenvalues are unstable due to machine tolerance,

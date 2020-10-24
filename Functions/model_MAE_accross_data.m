@@ -1,4 +1,4 @@
-function results = model_MAE_accross_data(out, A, B, q, N_test, model_type, plot_and_pause, plot_results)
+function results = model_MAE_accross_data(out, Ts, A, B, q, N_test, model_type, plot_and_pause, plot_results)
 %% Get Mean Absolute Error of model predicted forward by N_test 
 %% from every time step in dataset
 % i.e. Evaluate performance of model at different times during simulation
@@ -42,12 +42,14 @@ Size = [N, length(VariableTypes)];
 results = table('Size',Size,'VariableTypes',VariableTypes,'VariableNames',VariableNames);
 emptry_row = 1; % Keep track of next empty row to insert results 
 
-for k = 1:length(t)
+for k = 1:length(t)-N_test-1
     % Data to test with, starting at sample k           
     y_run = y_data(:, k + (0:N_test-1));
     u_run = u_data(:, k + (0:N_test-1));
     t_run =      t(:, k + (0:N_test-1));
 
+    t_now = t(k);
+    
     % Initial condition
     y_hat_0 = y_data(:,k);
 
@@ -95,10 +97,8 @@ for k = 1:length(t)
 
     % Plot and pause at every timestep
     if plot_and_pause
-        if mod(k, 100) == 0
-            figure(1)
-            hold on;
-            plot(t_run, y_run)
+        if mod(k, 100) == 0            
+            plot(t_run, y_run), hold on;
             threshold = 2*max(max(abs(y_data))); % for if y_hat is unstable
             y_hat(y_hat > threshold) = threshold;
             y_hat(y_hat < -threshold) = -threshold;
@@ -115,6 +115,7 @@ end % k
 
 if plot_results
     figure
+    results(~results.k,:) = []; % remove empty rows
     semilogy(t(results.k), results.MAE_mean)
     title("Model error over time")
     
@@ -125,4 +126,5 @@ if plot_results
     plot(t, y_data)
     legend('mean MAE scaled', 'x', 'z', 'theta')
     hold off
+    global_MAE_mean = mean(results.MAE_mean)
 end
