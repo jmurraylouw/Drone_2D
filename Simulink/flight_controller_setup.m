@@ -60,49 +60,6 @@ waypoints(2*i,  :) = table(point_time+interval_max, x_coord, z_coord); % Add tim
 
 waypoints_ts = timeseries([waypoints.x_coord, waypoints.z_coord], waypoints.point_time); % timeseries object for From Workspace block
 
-% Run with A and x
-run_and_plot = 0;
-if run_and_plot
-    
-    k_start = 500-q;
-    window = 10*2; % Number of data points to run and test for
-
-    % Initial condition
-    y_hat_0 = [];
-    for row = 0:q-1 % First column of spaced Hankel matrix
-        k = k_start + row;
-        y_hat_0 = [y_hat_0; y_data(:,k)];
-    end
-    
-    % Start at end of initial condition k
-    Y_data = y_data(:,k:k+window);
-    U      = u_data(:,k:k+window);
-    T      = t(:,k:k+window);
-    N      = length(Y_data);
-    
-    % Run model
-    Y_hat = zeros(length(y_hat_0),N); % Empty estimated Y
-    Y_hat(:,1) = y_hat_0; % Initial condition
-    for k = 1:N-1
-        Y_hat(:,k+1) = A_hat*Y_hat(:,k) + B_hat*U(:,k);
-    end
-
-    y_hat = Y_hat(end-ny+1:end, :); % Extract only non-delay time series (last m rows)
-
-%     % Vector of Mean Absolute Error on testing data
-%     MAE = sum(abs(y_hat - y_test), 2)./N_test % For each measured state
-
-    % Plot data vs model
-    figure;
-    plot(T, Y_data);
-    hold on;
-%     plot(t_test, y_test);
-
-    plot(T, y_hat, '--', 'LineWidth', 1); % Plot only non-delay coordinate
-    title('Training and Testing data vs Model');
-    hold off;
-end % run_and_plot
-
 % DMD parameters
 % Ts_dmd, ny, nu, x0, u0, N_train, q, model_intervals
 % load('Data/MPC_initial_plant.mat'); % load A_dmd, B_dmd, q, Ts_dmd from a previous DMD run
