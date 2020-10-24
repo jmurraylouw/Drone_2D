@@ -76,7 +76,7 @@ q = 6;
 y_rows = 1:3;
 sigma = 0;
 plot_prediction = 0;
-
+ 
 [A_dmd, B_dmd] = model_DMD(out, start_time, end_time, Ts_mpc, q, y_rows, sigma, plot_prediction);
 
 % Disturbance model to account for model uncertainty (eliminate steady-state error)
