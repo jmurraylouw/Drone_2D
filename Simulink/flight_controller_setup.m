@@ -4,15 +4,22 @@ load('Data/Drone_2D_control_params.mat'); % Load controller gain values
 dx_sp_max = 12; % (m/s) Max x velocity command (x and z)
 dx_sp_min = -12; % (m/s) Min x velocity command (x and z)
 
-dz_sp_max = 12; % (m/s) Max z velocity command (x and z)
-dz_sp_min = -12; % (m/s) Min z velocity command (x and z)
+dz_sp_max = 3; % (m/s) Max z velocity command (x and z)
+dz_sp_min = -1; % (m/s) Min z velocity command (x and z)
 
 theta_sp_max = 30*pi/180; % (rad) Max. pitch rate command
 theta_sp_min = -30*pi/180; % Min. pitch rate command
 
 dtheta_sp_max = 120*pi/180; % Max. pitch rate command
 dtheta_sp_min = -120*pi/180; % Min. pitch rate command
-% 
+
+thr_max = 1.0; % Maximum thrust
+thr_min = 0.08;
+
+max_vel_xy = 12;
+max_vel_z_up = 3;
+max_vel_z_down = -1;
+
 % sigma = 0.001; % Std deviation of measurement noise
 
 % Dimensions
