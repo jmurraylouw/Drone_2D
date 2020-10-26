@@ -66,7 +66,7 @@ waypoints_ts = timeseries([waypoints.x_coord, waypoints.z_coord], waypoints.poin
 % model_intervals = 10; 
 
 % Sample time of MPC:
-t_s = 5; % Minimum Settling time (s)
+t_s = 5; % For guidance, minimum desired settling time (s)
 Ts_mpc = 0.2; % Guide: between 10% to 25% of desired response time
 
 simulation_data_file = 'No_payload_data_5';
