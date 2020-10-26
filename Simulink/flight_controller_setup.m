@@ -1,6 +1,20 @@
 %% PID controllers
 load('Data/Drone_2D_control_params.mat'); % Load controller gain values
 
+dx_sp_max = 12; % (m/s) Max x velocity command (x and z)
+dx_sp_min = -12; % (m/s) Min x velocity command (x and z)
+
+dz_sp_max = 12; % (m/s) Max z velocity command (x and z)
+dz_sp_min = -12; % (m/s) Min z velocity command (x and z)
+
+theta_sp_max = 30*pi/180; % (rad) Max. pitch rate command
+theta_sp_min = -30*pi/180; % Min. pitch rate command
+
+dtheta_sp_max = 120*pi/180; % Max. pitch rate command
+dtheta_sp_min = -120*pi/180; % Min. pitch rate command
+% 
+% sigma = 0.001; % Std deviation of measurement noise
+
 % Dimensions
 nx = 6; % Number of states
 ny = 3; % Number of measurements

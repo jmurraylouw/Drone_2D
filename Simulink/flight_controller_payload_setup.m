@@ -15,12 +15,12 @@ theta_sp_min = -30*pi/180; % Min. pitch rate command
 
 dtheta_sp_max = 120*pi/180; % Max. pitch rate command
 dtheta_sp_min = -120*pi/180; % Min. pitch rate command
-
-sigma = 0.001; % Std deviation of measurement noise
+% 
+% sigma = 0.001; % Std deviation of measurement noise
 
 %% Initial conditions
-n = 8; % Number of states
-x0 = zeros(n,1); 
+nx = 8; % Number of states
+x0 = zeros(nx,1); 
 u0 = [0; 0];
 
 % Model parameters
