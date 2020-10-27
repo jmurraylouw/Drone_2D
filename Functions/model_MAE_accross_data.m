@@ -1,4 +1,4 @@
-function results = model_MAE_accross_data(out, Ts, A, B, q, N_test, model_type, plot_and_pause, plot_results)
+function results = model_MAE_accross_data(out, Ts, A, B, q, y_rows, N_test, model_type, plot_and_pause, plot_results)
 %% Get Mean Absolute Error of model predicted forward by N_test 
 %% from every time step in dataset
 % i.e. Evaluate performance of model at different times during simulation
@@ -14,12 +14,12 @@ function results = model_MAE_accross_data(out, Ts, A, B, q, N_test, model_type, 
 
 % Resample time series to desired sample time
 x_resamp = resample(out.x, 0:Ts:out.x.Time(end));  
-u_resamp = resample(out.F_r, 0:Ts:out.x.Time(end));  
+u_resamp = resample(out.u, 0:Ts:out.x.Time(end));  
 
 % Extract data
 u_data  = u_resamp.Data';
 x_data  = x_resamp.Data';
-y_data  = x_data(1:3,:); % Measurement data (x, z, theta)
+y_data  = x_data(y_rows,:); % Measurement data (x, z, theta)
 t       = x_resamp.Time'; % Time
 
 % Adjust for constant disturbance / mean control values
