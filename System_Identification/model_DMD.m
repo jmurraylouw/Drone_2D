@@ -86,7 +86,7 @@ if plot_prediction
     N_run = length(y_run);
 
     % Initial condition
-    y_hat_0 = y_train(:,k_start);
+    y_hat_0 = y_run(:,1);
 
     % Initial delay coordinates
     y_delays = zeros((q-1)*ny,1);
