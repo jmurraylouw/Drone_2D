@@ -62,8 +62,8 @@ z_coord = -5;
 waypoints(1,:) = table(0,                   x_coord, z_coord); % Initial point
 waypoints(2,:) = table(point_time_interval, x_coord, z_coord); % Initial point for 6 seconds
 
-x_min        = -10;     x_max        = 10; % (m) minimum and maximum coordinates for waypoints
-z_min        = -25;     z_max        = -5;
+x_min        = -5;     x_max         = 5; % (m) minimum and maximum coordinates for waypoints
+z_min        = -15;     z_max        = -5;
 interval_min = 4;       interval_max = 8;  % (s) minimum and maximum TIME interval between commands
 
 point_time = point_time_interval;
@@ -88,7 +88,6 @@ waypoints_ts = timeseries([waypoints.x_coord, waypoints.z_coord], waypoints.poin
 % model_intervals = 10; 
 
 % Sample time of MPC:
-t_s = 5; % For guidance, minimum desired settling time (s)
 Ts_mpc = 0.02; % Guide: between 10% to 25% of desired response time
 
 simulation_data_file = 'With_payload_data_1';
@@ -104,7 +103,7 @@ plot_prediction = 0;
 
 % Disturbance model to account for model uncertainty (eliminate steady-state error)
 CO = 2; % number of Controlled Outputs (x and z). theta is not controlled to a reference
-dist_influence = 1e-5; % Disturbances include uncertainty in model
+dist_influence = 0; % Disturbances include uncertainty in model
 B_ud = dist_influence*[eye(CO); zeros(q*ny - CO, CO)]; % B of unmeasured disturbance, for distrubance force in x and z
 
 % Change model structure so delays are included in A, not B 
@@ -141,9 +140,10 @@ tuning_weight = 1; % Smaller = robust, Larger = aggressive
 mpc_drone_2d = mpc(mpc_sys,Ts_mpc)
 getEstimator(mpc_drone_2d)
 
-% Guide: PH so PH*Ts == desired responce time
-mpc_drone_2d.PredictionHorizon  = 25; %t_s/Ts_mpc; % Prediction horizon (samples), initial guess according to MATLAB: Choose Sample Time and Horizons
-mpc_drone_2d.ControlHorizon     = 5; % Control horizon (samples)
+t_p = 10; % For guidance, minimum desired settling time (s)
+t_c = t_p - 5; % desired control settling time
+mpc_drone_2d.PredictionHorizon  = floor(t_p/Ts_mpc); %t_s/Ts_mpc; % Prediction horizon (samples), initial guess according to MATLAB: Choose Sample Time and Horizons
+mpc_drone_2d.ControlHorizon     = floor(t_c/Ts_mpc); % Control horizon (samples)
 
 mpc_drone_2d.Weights.OutputVariables        = [1, 1, 0, 0, zeros(1, (q-1)*ny)]*tuning_weight;
 mpc_drone_2d.Weights.ManipulatedVariables   = 1e-3*[1, 1]*tuning_weight; % Weights of delay coordinates to 0
@@ -159,8 +159,8 @@ mpc_drone_2d.OV(3).Max = theta_max;
 % Input bounds
 
 % Normalised
-F_r_z_min = -100;
-F_r_z_max = 100; % ??? Assume designed for 2:1 power to weight ratio
+F_r_z_min = -150;
+F_r_z_max = abs((M + m)*g);
 
 F_r_x_max = F_r_z_max;
 F_r_x_min = -F_r_x_max;

@@ -62,9 +62,9 @@ z_coord = -5;
 waypoints(1,:) = table(0,                   x_coord, z_coord); % Initial point
 waypoints(2,:) = table(point_time_interval, x_coord, z_coord); % Initial point for 6 seconds
 
-x_min        = -10;     x_max        = 10; % (m) minimum and maximum coordinates for waypoints
-z_min        = -25;     z_max        = -5;
-interval_min = 10;       interval_max = 20;  % (s) minimum and maximum TIME interval between commands
+x_min        = -5;     x_max         = 5; % (m) minimum and maximum coordinates for waypoints
+z_min        = -15;     z_max        = -5;
+interval_min = 4;       interval_max = 8;  % (s) minimum and maximum TIME interval between commands
 
 point_time = point_time_interval;
 rng(0); % Initialise random number generator for repeatability
@@ -88,18 +88,29 @@ waypoints_ts = timeseries([waypoints.x_coord, waypoints.z_coord], waypoints.poin
 % model_intervals = 10; 
 
 % Sample time of MPC:
-t_s = 5; % For guidance, minimum desired settling time (s)
-Ts_mpc = 0.2; % Guide: between 10% to 25% of desired response time
+Ts_mpc = 0.03;
 
 simulation_data_file = 'No_payload_data_5';
 load(['Data/', simulation_data_file, '.mat']) % Load simulation data for dmd model
-start_time = 20;
+start_time = 30;
 end_time = 100;
 q = 6;
 sigma = 0;
 plot_prediction = 0;
- 
+tic 
 [A_dmd, B_dmd] = model_DMD(out, start_time, end_time, Ts_mpc, q, y_rows, sigma, plot_prediction);
+toc
+%% Test DMD model
+% tic
+% N_test = t_s/Ts_mpc;
+% pred_time = N_test*Ts_mpc
+% model_type = 'delay_B';
+% plot_and_pause = 0;
+% plot_results = 1;
+% results = model_MAE_accross_data(out, Ts_mpc, A_dmd, B_dmd, q, y_rows, N_test, model_type, plot_and_pause, plot_results);
+% 
+% toc
+% stop
 
 % Disturbance model to account for model uncertainty (eliminate steady-state error)
 CO = 2; % number of Controlled Outputs (x and z). theta is not controlled to a reference
@@ -138,12 +149,14 @@ tuning_weight = 1; % Smaller = robust, Larger = aggressive
 mpc_drone_2d = mpc(mpc_sys,Ts_mpc);
 
 % Guide: PH so PH*Ts == desired responce time
-mpc_drone_2d.PredictionHorizon  = 25; %t_s/Ts_mpc; % Prediction horizon (samples), initial guess according to MATLAB: Choose Sample Time and Horizons
-mpc_drone_2d.ControlHorizon     = 3; % Control horizon (samples)
+t_p = 10; % For guidance, minimum desired settling time (s)
+t_c = t_p - 5; % desired control settling time
+mpc_drone_2d.PredictionHorizon  = floor(t_p/Ts_mpc); %t_s/Ts_mpc; % Prediction horizon (samples), initial guess according to MATLAB: Choose Sample Time and Horizons
+mpc_drone_2d.ControlHorizon     = floor(t_c/Ts_mpc); % Control horizon (samples)
 
-mpc_drone_2d.Weights.OutputVariables        = [1, 1, 0, zeros(1, (q-1)*ny)]*tuning_weight;
+mpc_drone_2d.Weights.OutputVariables        = [1, 0.5, 0, zeros(1, (q-1)*ny)]*tuning_weight;
 mpc_drone_2d.Weights.ManipulatedVariables   = 1e-3*[1, 1]*tuning_weight; % Weights of delay coordinates to 0
-mpc_drone_2d.Weights.ManipulatedVariablesRate     = 1e-1*[5, 1]/tuning_weight;
+mpc_drone_2d.Weights.ManipulatedVariablesRate     = 9e0*[1, 0.1]/tuning_weight;
 
 % Output bounds
 theta_min = -30*(pi/180);
@@ -156,10 +169,10 @@ mpc_drone_2d.OV(3).Max = theta_max;
 
 % Normalised
 F_r_z_min = -100;
-F_r_z_max = 100; % ??? Assume designed for 2:1 power to weight ratio
+F_r_z_max = abs(M*g);
 
-F_r_x_max = F_r_z_max;
-F_r_x_min = -F_r_x_max;
+F_r_x_min = -50;
+F_r_x_max = 50;
 
 mpc_drone_2d.MV(1).Min = F_r_x_min;
 mpc_drone_2d.MV(1).Max = F_r_x_max;
