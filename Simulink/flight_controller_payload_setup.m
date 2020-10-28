@@ -89,30 +89,32 @@ waypoints_ts = timeseries([waypoints.x_coord, waypoints.z_coord], waypoints.poin
 
 % Sample time of MPC:
 t_s = 5; % For guidance, minimum desired settling time (s)
-Ts_mpc = 0.05; % Guide: between 10% to 25% of desired response time
+Ts_mpc = 0.02; % Guide: between 10% to 25% of desired response time
 
 simulation_data_file = 'With_payload_data_1';
-load(['Data/', simulation_data_file, '.mat']) % Load simulation data for dmd model
+load(['Data/', simulation_data_file, '.mat']) % Load simulation data
 start_time = 30;
-end_time = 60;
-q = 2;
+end_time = 90;
+q = 6;
+y_rows = 1:4;
 sigma = 0;
-plot_prediction = 1;
-u_bar = [0; (M+m)*g];
- 
-[A_dmd, B_dmd] = model_DMD(out, start_time, end_time, Ts_mpc, q, y_rows, sigma, plot_prediction, u_bar);
+plot_prediction = 0;
+
+[A_dmd, B_dmd] = model_DMD(out, start_time, end_time, Ts_mpc, q, y_rows, sigma, plot_prediction);
 
 % Disturbance model to account for model uncertainty (eliminate steady-state error)
 CO = 2; % number of Controlled Outputs (x and z). theta is not controlled to a reference
-dist_influence = 0; % 1e-5; % Disturbances include uncertainty in model
+dist_influence = 1e-5; % Disturbances include uncertainty in model
 B_ud = dist_influence*[eye(CO); zeros(q*ny - CO, CO)]; % B of unmeasured disturbance, for distrubance force in x and z
 
 % Change model structure so delays are included in A, not B 
 A_mpc = [A_dmd,       B_dmd(:, 1:end-nu);
          eye((q-1)*ny),   zeros((q-1)*ny,ny)];
 
+% B_mpc = [B_dmd(:, end-nu+1:end); zeros((q-1)*ny, nu)];
 B_mpc = [[B_dmd(:, end-nu+1:end); zeros((q-1)*ny, nu)], B_ud];
 C_mpc = eye(q*ny);
+% D_mpc = zeros(q*ny, nu);
 D_mpc = zeros(q*ny, nu + CO);
 mpc_sys = ss(A_mpc,B_mpc,C_mpc,D_mpc,Ts_mpc); % LTI system
 
@@ -136,11 +138,12 @@ mpc_sys.InputGroup.MV = 1:nu; % Munipulated Variable indices
 mpc_sys.InputGroup.UD = nu + (1:CO); % unmeasured disturbance indices, one for each 
 
 tuning_weight = 1; % Smaller = robust, Larger = aggressive
-mpc_drone_2d = mpc(mpc_sys,Ts_mpc);
+mpc_drone_2d = mpc(mpc_sys,Ts_mpc)
+getEstimator(mpc_drone_2d)
 
 % Guide: PH so PH*Ts == desired responce time
 mpc_drone_2d.PredictionHorizon  = 25; %t_s/Ts_mpc; % Prediction horizon (samples), initial guess according to MATLAB: Choose Sample Time and Horizons
-mpc_drone_2d.ControlHorizon     = 3; % Control horizon (samples)
+mpc_drone_2d.ControlHorizon     = 5; % Control horizon (samples)
 
 mpc_drone_2d.Weights.OutputVariables        = [1, 1, 0, 0, zeros(1, (q-1)*ny)]*tuning_weight;
 mpc_drone_2d.Weights.ManipulatedVariables   = 1e-3*[1, 1]*tuning_weight; % Weights of delay coordinates to 0

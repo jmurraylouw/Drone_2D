@@ -24,7 +24,8 @@ max_vel_z_down = -1;
 
 % Dimensions
 nx = 6; % Number of states
-ny = 3; % Number of measurements
+y_rows = 1:3; % States (rows) to be measured
+ny = length(y_rows); % Number of measurements
 nu = 2; % Number of inputs
 
 % Initial conditions
@@ -95,7 +96,6 @@ load(['Data/', simulation_data_file, '.mat']) % Load simulation data for dmd mod
 start_time = 20;
 end_time = 100;
 q = 6;
-y_rows = 1:3;
 sigma = 0;
 plot_prediction = 0;
  

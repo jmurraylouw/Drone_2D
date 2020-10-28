@@ -11,7 +11,7 @@ function add_delay_coordinates(block)
 
 function setup(block)
   
-    block.NumDialogPrms  = 4;
+    block.NumDialogPrms  = 5;
 
     %% Register number of input and output ports
     block.NumInputPorts  = 1;
@@ -23,13 +23,16 @@ function setup(block)
     block.SetPreCompOutPortInfoToDynamic;
 
     %% Extract Dialog params
-    %   x_ext_0   = block.DialogPrm(1).Data; % For reference sake
-    ny        = block.DialogPrm(2).Data;
+    %   y_ext_0   = block.DialogPrm(1).Data; % For reference sake
+    y_rows    = block.DialogPrm(2).Data;
     q         = block.DialogPrm(3).Data;
     Ts_mpc    = block.DialogPrm(4).Data;
-
+    nx        = block.DialogPrm(5).Data;
+    
+    ny        = length(y_rows);
+    
     %% Port dimentions
-    block.InputPort(1).Dimensions        = ny;
+    block.InputPort(1).Dimensions        = nx;
     block.InputPort(1).DirectFeedthrough = true;
 
     block.OutputPort(1).Dimensions       = q*ny;
@@ -51,8 +54,9 @@ function setup(block)
 function DoPostPropSetup(block)
 
     %% Extract Dialog params
-    ny        = block.DialogPrm(2).Data;
+    y_rows    = block.DialogPrm(2).Data;
     q         = block.DialogPrm(3).Data;
+    ny        = length(y_rows);
 
     %% Setup Dwork
     block.NumDworks = 1;
@@ -73,9 +77,11 @@ function InitConditions(block)
 
 function Output(block)
     %% Extract Dialog params
-    ny = block.DialogPrm(2).Data;
+    y_rows    = block.DialogPrm(2).Data;
+    ny        = length(y_rows);
 
-    y = block.InputPort(1).Data; % Measurement vector
+    x = block.InputPort(1).Data; % Measurement vector
+    y = x(y_rows);
     
     y_ext_prev = block.Dwork(1).Data; % Previous xtended measurement vector
     y_ext = [y; y_ext_prev(1:length(y_ext_prev) - ny)]; % Extended measurement vector for output, discard oldest delay, add new measurement
