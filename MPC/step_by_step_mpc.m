@@ -30,7 +30,7 @@ for k = 1:N % every timestep k
     ym = mo_data(:, k);
     r = ref_data(:, k);
     [mv, info] = mpcmove(mpc_drone_2d, x_mpc, ym, r, v);
-    if mod(k,0.03/Ts_mpc) == 0 && (k*Ts_mpc > 26)
+    if mod(k,0.03/Ts_mpc) == 0 %&& (k*Ts_mpc > 26)
         subplot(2,1,1)
         plot(info.Topt + t(k), info.Yopt(:,y_rows));
         ylim([-15, 10])

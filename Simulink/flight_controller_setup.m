@@ -160,7 +160,7 @@ t_c = 5; % desired control settling time
 mpc_drone_2d.PredictionHorizon  = floor(t_p/Ts_mpc); %t_s/Ts_mpc; % Prediction horizon (samples), initial guess according to MATLAB: Choose Sample Time and Horizons
 mpc_drone_2d.ControlHorizon     = floor(t_c/Ts_mpc); % Control horizon (samples)
 
-mpc_drone_2d.Weights.OutputVariables        = [1, 0.5, 0, zeros(1, (q-1)*ny)]*tuning_weight;
+mpc_drone_2d.Weights.OutputVariables        = [1, 0.8, 0, zeros(1, (q-1)*ny)]*tuning_weight;
 mpc_drone_2d.Weights.ManipulatedVariables   = 1e-3*[1, 1]*tuning_weight; % Weights of delay coordinates to 0
 mpc_drone_2d.Weights.ManipulatedVariablesRate     = 9e0*[1, 0.1]/tuning_weight;
 
