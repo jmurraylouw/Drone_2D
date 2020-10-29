@@ -183,7 +183,7 @@ waypoints.Properties.VariableNames = {'point_time', 'x_coord', 'z_coord'};
 % waypoints(2*i,  :) = table(point_time+interval_max, x_coord, z_coord); % Add time to reach final point
 
 % Regular steps
-point_time_interval = 12; % (s) interval between commands
+point_time_interval = 20; % (s) interval between commands
 step_size = 1;
 x_coord = 0;
 z_coord = 0;
