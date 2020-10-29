@@ -25,8 +25,9 @@ y_train = x_train(y_rows,:);
 u_train = u_train.Data';
 
 % Testing data
-x_test = resample(out.x, train_time );  
-u_test = resample(out.u, train_time );  
+test_time = train_time+10;
+x_test = resample(out.x, test_time );  
+u_test = resample(out.u, test_time );  
 t_test = x_test.Time';
 N_test = length(t_test); % Num of data samples for testing
 
@@ -52,22 +53,26 @@ results_file = ['Data/havok_results_', simulation_data_file, '_sig=', sig_str, '
 try
     load(results_file);
     results(~results.q,:) = []; % remove empty rows
+    
+    % Parameters
+    best_row = find(results.MAE_mean == min(results.MAE_mean));
+    best_results = results(best_row,:);
+    q = double(best_results.q);
+    p = double(best_results.p);
+    
 catch
     disp('No saved results file')  
 end
 
-% Parameters
-best_row = find(results.MAE_mean == min(results.MAE_mean));
-best_results = results(best_row,:)
-q = double(best_results.q);
-p = double(best_results.p);
+q
+p
 
-q = 100
-p = 38
+% q = 80
+% p = 40
 
 only_q = 0;
 if only_q
-    q = 11;
+    q = 10;
     q_rows = find(results.q == q);
     q_results = results(q_rows,:);
     best_row = find(q_results.MAE_mean == min(q_results.MAE_mean));

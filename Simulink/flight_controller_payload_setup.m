@@ -63,7 +63,7 @@ load(['Data/', simulation_data_file, '.mat']) % Load simulation data
 start_time = 20;
 end_time = 100;
 y_rows = 1:4;
-q = 6;
+% q = 6;
 sigma = 0;
 plot_prediction = 0;
 
@@ -83,6 +83,11 @@ B_mpc = [[B_dmd(:, end-nu+1:end); zeros((q-1)*ny, nu)], B_ud];
 C_mpc = eye(q*ny);
 % D_mpc = zeros(q*ny, nu);
 D_mpc = zeros(q*ny, nu + CO);
+
+%% HAVOK system:
+A_mpc = A_hat;
+B_mpc = [B_hat, B_ud];
+
 mpc_sys = ss(A_mpc,B_mpc,C_mpc,D_mpc,Ts_mpc); % LTI system
 
 % Initital conditions for extended measurment vector for MPC

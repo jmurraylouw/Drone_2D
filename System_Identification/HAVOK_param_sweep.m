@@ -8,8 +8,8 @@ clear all;
 total_timer = tic; % Start timer for this script
 
 % Search space
-q_min = 3; % Min value of q in grid search
-q_max = 40; % Max value of q in grid search
+q_min = 10; % Min value of q in grid search
+q_max = 100; % Max value of q in grid search
 q_increment = 2; % Increment value of q in grid search
 
 p_min = 3; % Min value of p in grid search
@@ -20,44 +20,49 @@ q_search = q_min:q_increment:q_max; % List of q parameters to search in
 % p_search defined before p for loop
 
 % Extract data
-simulation_data_file = 'With_payload_data_3';
+simulation_data_file = 'With_payload_data_4';
 load(['Data/', simulation_data_file, '.mat']) % Load simulation data
 
 Ts = 0.03;     % Desired sample time
 y_rows = 1:4;
 
 % Adjust for constant disturbance / mean control values
-% u_bar = mean(x_train,2); % Input needed to keep at a fixed point
-u_bar = [0, -(2+4.5)*9.81]
+u_bar = mean(out.u.Data,1); % Input needed to keep at a fixed point
+% u_bar = [0, -(2+4.5)*9.81]
 out.u.Data  = out.u.Data - u_bar; % Adjust for unmeasured input
 
-% Resample time series to desired sample time and training period
-x_resamp = resample(out.x, 8:Ts:(out.x.Time(end)) );  
-u_resamp = resample(out.u, 8:Ts:(out.x.Time(end)) );  
-
-% Extract data
-x_train = x_resamp.Data';
-y_train = x_train(y_rows,:);
-u_train = u_resamp.Data';
-t_train = x_resamp.Time';
+% Training data
+train_time = 10:Ts:50;
+x_train = resample(out.x, train_time );% Resample time series to desired sample time and training period  
+u_train = resample(out.u, train_time );  
+t_train = x_train.Time';
 N_train = length(t_train);
 
+x_train = x_train.Data';
+y_train = x_train(y_rows,:);
+u_train = u_train.Data';
 
 % Testing data
-x_test = resample(out.x, 30:Ts:50 );  
-u_test = resample(out.u, 30:Ts:50 );  
+x_test = resample(out.x, train_time );  
+u_test = resample(out.u, train_time );  
 t_test = x_test.Time';
 N_test = length(t_test); % Num of data samples for testing
 
 x_test = x_test.Data';
-u_test = u_test.Data';
 y_test = x_test(y_rows,:); % One sample of testing data overlaps for initial condition
+u_test = u_test.Data';
 
 % Data dimentions
 nx = size(x_train,1); % number of states
 ny = size(y_train,1); % number of measurements
-nu = size(u_train,1); % number of inputs
-    
+nu = size(u_train,1); % number of inputs  
+
+% % Add noise
+% rng('default');
+% rng(1); % Repeatable random numbers
+% % sigma = 0.001; % Noise standard deviation
+% y_data_noise = y_data + sigma*randn(size(y_data));
+
 % Create empty results table
 VariableTypes = {'int16','int16','double'}; % id, q, p, MAE
 VariableNames = {'q', 'p', 'MAE_mean'};
@@ -134,9 +139,9 @@ for q = q_search
             AB_tilde = stabilise(AB_tilde,3);
             
             % convert to x coordinates
-            AB_bar = (U_tilde*S_tilde)*AB_tilde*pinv(U_tilde*S_tilde);
-            A_bar = AB_bar(1:q*ny, 1:q*ny);
-            B_bar = AB_bar(1:q*ny, q*ny+1:end);            
+            AB = (U_tilde*S_tilde)*AB_tilde*pinv(U_tilde*S_tilde);
+            A = AB(1:q*ny, 1:q*ny);
+            B = AB(1:q*ny, q*ny+1:end);            
 
             % Compare to testing data
             % Initial condition (last entries of training data)
@@ -149,11 +154,11 @@ for q = q_search
             Y_hat = zeros(length(y_hat_0),N_test); % Empty estimated Y
             Y_hat(:,q) = y_hat_0; % Initial condition
             for k = q:N_test-1
-                Y_hat(:,k+1) = A_bar*Y_hat(:,k) + B_bar*u_test(:,k);
+                Y_hat(:,k+1) = A*Y_hat(:,k) + B*u_test(:,k);
             end
 
-            y_hat = Y_hat(end-ny+1:end, :); % Extract only non-delay time series (last m rows)
-            
+            y_hat = Y_hat(1:ny, :); % Extract only non-delay time series
+
             % Vector of Mean Absolute Error on testing data
             MAE = sum(abs(y_hat - y_test), 2)./N_test; % For each measured state
         
