@@ -60,33 +60,42 @@ Ts_mpc = 0.03; % Guide: between 10% to 25% of desired response time
 
 simulation_data_file = 'With_payload_data_2';
 load(['Data/', simulation_data_file, '.mat']) % Load simulation data
-start_time = 20;
-end_time = 100;
-y_rows = 1:4;
-% q = 6;
-sigma = 0;
-plot_prediction = 0;
-
-[A_dmd, B_dmd] = model_DMD(out, start_time, end_time, Ts_mpc, q, y_rows, sigma, plot_prediction);
 
 % Disturbance model to account for model uncertainty (eliminate steady-state error)
 CO = 2; % number of Controlled Outputs (x and z). theta is not controlled to a reference
 dist_influence = 0; % Disturbances include uncertainty in model
 B_ud = dist_influence*[eye(CO); zeros(q*ny - CO, CO)]; % B of unmeasured disturbance, for distrubance force in x and z
 
-% Change model structure so delays are included in A, not B 
-A_mpc = [A_dmd,       B_dmd(:, 1:end-nu);
-         eye((q-1)*ny),   zeros((q-1)*ny,ny)];
 
-% B_mpc = [B_dmd(:, end-nu+1:end); zeros((q-1)*ny, nu)];
-B_mpc = [[B_dmd(:, end-nu+1:end); zeros((q-1)*ny, nu)], B_ud];
+model = 'havoc'; % Choose which model to use for MPC
+switch model
+    case 'dmd'
+        start_time = 20;
+        end_time = 100;
+        y_rows = 1:4;
+        % q = 6;
+        sigma = 0;
+        plot_prediction = 0;
+
+        [A_dmd, B_dmd] = model_DMD(out, start_time, end_time, Ts_mpc, q, y_rows, sigma, plot_prediction);
+
+        % Change model structure so delays are included in A, not B 
+        A_mpc = [A_dmd,       B_dmd(:, 1:end-nu);
+                 eye((q-1)*ny),   zeros((q-1)*ny,ny)];
+
+        % B_mpc = [B_dmd(:, end-nu+1:end); zeros((q-1)*ny, nu)];
+        B_mpc = [[B_dmd(:, end-nu+1:end); zeros((q-1)*ny, nu)], B_ud];
+    
+    case 'havoc'
+        A_mpc = A_havoc;
+        B_mpc = [B_havoc, B_ud];
+        
+    otherwise
+        error("Choose only 'dmd' or 'havoc' ")
+end
+
 C_mpc = eye(q*ny);
-% D_mpc = zeros(q*ny, nu);
 D_mpc = zeros(q*ny, nu + CO);
-
-%% HAVOK system:
-A_mpc = A_hat;
-B_mpc = [B_hat, B_ud];
 
 mpc_sys = ss(A_mpc,B_mpc,C_mpc,D_mpc,Ts_mpc); % LTI system
 

@@ -113,12 +113,12 @@ AB_tilde = V_til_2*pinv(V_til_1); % combined A and B matrix, side by side
 AB_tilde = stabilise(AB_tilde,3);
 
 % Convert to x coordinates
-AB_hat = (U_tilde*S_tilde)*AB_tilde*pinv(U_tilde*S_tilde);
+AB_havoc = (U_tilde*S_tilde)*AB_tilde*pinv(U_tilde*S_tilde);
 
 % System matrixes from HAVOK
-A_hat = AB_hat(1:q*ny, 1:q*ny);
-B_hat = AB_hat(1:q*ny, q*ny+1:end);
-% A_hat = stabilise(A_hat,10);
+A_havoc = AB_havoc(1:q*ny, 1:q*ny);
+B_havoc = AB_havoc(1:q*ny, q*ny+1:end);
+% A_havoc = stabilise(A_havoc,10);
 
 % DMD of Y
 Y2 = Y(:, 2:end  );
@@ -135,7 +135,7 @@ B  = AB(:,(q*ny+1):end);
 
 % Compare to testing data
 
-%% Run with HAVOK (A_hat, B_hat and x)
+%% Run with HAVOK (A_havoc, B_havoc and x)
 figure;
 plot(U1(:,1:5))
 title('First 5 modes of SVD')
@@ -151,13 +151,13 @@ end
 Y_hat = zeros(length(y_hat_0),N_test); % Empty estimated Y
 Y_hat(:,q) = y_hat_0; % Initial condition
 for k = q:N_test-1
-    Y_hat(:,k+1) = A_hat*Y_hat(:,k) + B_hat*u_test(:,k);
+    Y_hat(:,k+1) = A_havoc*Y_hat(:,k) + B_havoc*u_test(:,k);
 end
 
 y_hat_bar = Y_hat(1:ny, :); % Extract only non-delay time series
 
 % Vector of Mean Absolute Error on testing data
-MAE_bar = sum(abs(y_hat_bar - y_test), 2)./N_test % For each measured state
+MAE = sum(abs(y_hat_bar - y_test), 2)./N_test % For each measured state
 
 
 % %% Run with DMD (A and x)
