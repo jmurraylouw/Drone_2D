@@ -50,7 +50,7 @@ w = N_train - q + 1; % num columns of Hankel matrix
 if q == 1 % Special case if no delay coordinates
     Upsilon = u_train(:, q:end);
 else
-    Upsilon = zeros((q-1)*ny,w); % Augmented state with delay coordinates [...; Y(k-2); Y(k-1); Y(k)]
+    Upsilon = zeros((q-1)*ny,w); % Augmented state Y[k] at top
     for row = 0:q-2 % Add delay coordinates
         Upsilon((end - ny*(row+1) + 1):(end - ny*row), :) = y_train(:, row + (1:w));
     end

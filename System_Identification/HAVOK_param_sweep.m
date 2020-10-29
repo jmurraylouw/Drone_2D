@@ -9,7 +9,7 @@ total_timer = tic; % Start timer for this script
 
 % Search space
 q_min = 3; % Min value of q in grid search
-q_max = 100; % Max value of q in grid search
+q_max = 40; % Max value of q in grid search
 q_increment = 2; % Increment value of q in grid search
 
 p_min = 3; % Min value of p in grid search
@@ -20,52 +20,43 @@ q_search = q_min:q_increment:q_max; % List of q parameters to search in
 % p_search defined before p for loop
 
 % Extract data
-simulation_data_file = 'With_payload_data_2';
+simulation_data_file = 'With_payload_data_3';
 load(['Data/', simulation_data_file, '.mat']) % Load simulation data
 
 Ts = 0.03;     % Desired sample time
-y_rows = [1,2,3,4];
-
-% Resample time series to desired sample time and training period
-x_resamp = resample(out.x, 10:Ts:(out.x.Time(end)) );  
-u_resamp = resample(out.u, 10:Ts:(out.x.Time(end)) );  
-
-% Extract data
-u_data  = u_resamp.Data';
-x_data  = x_resamp.Data';
-y_data  = x_data(y_rows,:); % Measurement data
-t       = x_resamp.Time';
+y_rows = 1:4;
 
 % Adjust for constant disturbance / mean control values
-u_bar = mean(u_data,2); % Input needed to keep at a fixed point
-% u_bar = [0; -4.5*9.81]; % 
-u_data  = u_data - u_bar; % Adjust for unmeasured input
+% u_bar = mean(x_train,2); % Input needed to keep at a fixed point
+u_bar = [0, -(2+4.5)*9.81]
+out.u.Data  = out.u.Data - u_bar; % Adjust for unmeasured input
 
-% Testing data - Last 50 s is for testing and one sample overlaps training 
-N_test = 100; % Num of data samples for testing
-x_test = x_data(:,end-N_test+1:end);
-y_test = y_data(:,end-N_test+1:end); % One sample of testing data overlaps for initial condition
-u_test = u_data(:,end-N_test+1:end);
-t_test = t(:,end-N_test+1:end);
+% Resample time series to desired sample time and training period
+x_resamp = resample(out.x, 8:Ts:(out.x.Time(end)) );  
+u_resamp = resample(out.u, 8:Ts:(out.x.Time(end)) );  
+
+% Extract data
+x_train = x_resamp.Data';
+y_train = x_train(y_rows,:);
+u_train = u_resamp.Data';
+t_train = x_resamp.Time';
+N_train = length(t_train);
+
+
+% Testing data
+x_test = resample(out.x, 30:Ts:50 );  
+u_test = resample(out.u, 30:Ts:50 );  
+t_test = x_test.Time';
+N_test = length(t_test); % Num of data samples for testing
+
+x_test = x_test.Data';
+u_test = u_test.Data';
+y_test = x_test(y_rows,:); % One sample of testing data overlaps for initial condition
 
 % Data dimentions
-nx = size(x_data,1); % number of states
-ny = size(y_data,1); % number of measurements
-nu = size(u_data,1); % number of inputs
-N  = length(t);     % Number of data samples
-
-% Add noise
-rng('default');
-rng(1); % Repeatable random numbers
-sigma = 0; % Noise standard deviation
-y_data_noise = y_data + sigma*randn(size(y_data));
-
-% Training data - Last sample of training is first sample of testing
-% ??? later add N_train to results table being saved
-N_train = 60/Ts; % Number of sampels in training data x
-y_train = y_data_noise(:,end-N_test-N_train+2:end-N_test+1); % Use noisy data
-u_train = u_data(:,end-N_test-N_train+2:end-N_test+1);
-t_train = t(:,end-N_test-N_train+2:end-N_test+1);
+nx = size(x_train,1); % number of states
+ny = size(y_train,1); % number of measurements
+nu = size(u_train,1); % number of inputs
     
 % Create empty results table
 VariableTypes = {'int16','int16','double'}; % id, q, p, MAE
@@ -77,6 +68,7 @@ end
 Size = [length(q_search)*length(p_min:p_increment:p_max), length(VariableTypes)];
 
 % Read previous results
+sigma = 0;
 sig_str = strrep(num2str(sigma),'.','_'); % Convert sigma value to string
 results_file = ['Data/havok_results_', simulation_data_file, '_sig=', sig_str, '.mat'];
 
@@ -115,9 +107,9 @@ for q = q_search
                 D = (q-1)*Ts; % Delay duration (Dynamics in delay embedding)
 
                 % Create Hankel matrix with measurements
-                Y = zeros(q*ny,w); % Augmented state with delay coordinates [... Y(k-2); Y(k-1); Y(k)]
+                Y = zeros((q)*ny,w); % Augmented state Y[k] at top
                 for row = 0:q-1 % Add delay coordinates
-                    Y(row*ny+1:(row+1)*ny, :) = y_train(:, row + (0:w-1) + 1);
+                    Y((end - ny*(row+1) + 1):(end - ny*row), :) = y_train(:, row + (1:w));
                 end
                 
                 Upsilon = u_train(:, q:end); % Leave out last time step to match V_til_1
@@ -148,15 +140,15 @@ for q = q_search
 
             % Compare to testing data
             % Initial condition (last entries of training data)
-            y_hat_0 = zeros(q*ny,1);
+            y_hat_0 = zeros(q*ny,1); % Y[k] at top
             for row = 0:q-1 % First column of spaced Hankel matrix
-                y_hat_0(row*ny+1:(row+1)*ny, 1) = y_train(:, end - ((q-1)+1) + row + 1);
+                y_hat_0(row*ny+1:(row+1)*ny, 1) = y_test(:,q-row);
             end
 
             % Run model
             Y_hat = zeros(length(y_hat_0),N_test); % Empty estimated Y
-            Y_hat(:,1) = y_hat_0; % Initial condition
-            for k = 1:N_test-1
+            Y_hat(:,q) = y_hat_0; % Initial condition
+            for k = q:N_test-1
                 Y_hat(:,k+1) = A_bar*Y_hat(:,k) + B_bar*u_test(:,k);
             end
 
