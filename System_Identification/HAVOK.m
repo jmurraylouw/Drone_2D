@@ -25,7 +25,7 @@ y_train = x_train(y_rows,:);
 u_train = u_train.Data';
 
 % Testing data
-test_time = train_time+10;
+test_time = train_time +40;
 x_test = resample(out.x, test_time );  
 u_test = resample(out.u, test_time );  
 t_test = x_test.Time';
@@ -64,13 +64,7 @@ catch
     disp('No saved results file')  
 end
 
-q
-p
-
-% q = 80
-% p = 40
-
-only_q = 0;
+only_q = 1; % Try best result for specific q
 if only_q
     q = 10;
     q_rows = find(results.q == q);
@@ -79,6 +73,13 @@ if only_q
     best_results = q_results(best_row,:)
     p = double(best_results.p);
 end
+
+% % Override parameters:
+% q = 80
+% p = 40
+
+q
+p
 
 w = N_train - q + 1; % num columns of Hankel matrix
 D = (q-1)*Ts; % Delay duration (Dynamics in delay embedding)

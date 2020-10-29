@@ -43,6 +43,7 @@ y_train = x_train(y_rows,:);
 u_train = u_train.Data';
 
 % Testing data
+test_time = train_time + 20;
 x_test = resample(out.x, train_time );  
 u_test = resample(out.u, train_time );  
 t_test = x_test.Time';
