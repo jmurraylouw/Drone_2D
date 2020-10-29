@@ -50,38 +50,6 @@ MM = [-1, 1;
 % Forgetting factor
 lambda = 0.985; % Exponential forgetting factor of moving average to smooth out spikes in input for SVD performance
 
-% Way points
-num_waypoints = 100; % Number of waypoints included in command
-point_time_interval = 0; % Initial interval between commands
-
-waypoints = table('Size', [(num_waypoints+1)*2, 3], 'VariableTypes', ["double", "double", "double"]);
-waypoints.Properties.VariableNames = {'point_time', 'x_coord', 'z_coord'};
-
-x_coord = 0;
-z_coord = -5;
-waypoints(1,:) = table(0,                   x_coord, z_coord); % Initial point
-waypoints(2,:) = table(point_time_interval, x_coord, z_coord); % Initial point for 6 seconds
-
-x_min        = -5;     x_max         = 5; % (m) minimum and maximum coordinates for waypoints
-z_min        = -15;     z_max        = -5;
-interval_min = 4;       interval_max = 8;  % (s) minimum and maximum TIME interval between commands
-
-point_time = point_time_interval;
-rng(0); % Initialise random number generator for repeatability
-for i = 1:num_waypoints
-    point_time_interval = (interval_max - interval_min).*rand() + interval_min; % (s) random time interval between commands
-    point_time = point_time + point_time_interval;
-
-    waypoints(2*i,  :) = table(point_time, x_coord, z_coord); % Previous point    
-    x_coord    = (x_max - x_min).*rand() + x_min; % x coordinate of next waypoint
-    z_coord    = (z_max - z_min).*rand() + z_min; % z coordinate of next waypoint   
-    waypoints(2*i+1,:) = table(point_time, x_coord, z_coord); % Next point
-end
-i = i+1;
-waypoints(2*i,  :) = table(point_time+interval_max, x_coord, z_coord); % Add time to reach final point
-
-waypoints_ts = timeseries([waypoints.x_coord, waypoints.z_coord], waypoints.point_time); % timeseries object for From Workspace block
-
 % DMD parameters
 % Ts_dmd, ny, nu, x0, u0, N_train, q, model_intervals
 % load('Data/MPC_initial_plant.mat'); % load A_dmd, B_dmd, q, Ts_dmd from a previous DMD run
@@ -90,7 +58,7 @@ waypoints_ts = timeseries([waypoints.x_coord, waypoints.z_coord], waypoints.poin
 % Sample time of MPC:
 Ts_mpc = 0.02; % Guide: between 10% to 25% of desired response time
 
-simulation_data_file = 'With_payload_data_1';
+simulation_data_file = 'With_payload_data_2';
 load(['Data/', simulation_data_file, '.mat']) % Load simulation data
 start_time = 30;
 end_time = 90;
@@ -128,67 +96,93 @@ delays_0 = []; % Initial delay vector
 for i = 1:q-1
     delays_0 = [delays_0; y0];
 end
+% 
+% % MPC object
+% old_status = mpcverbosity('off'); % No display messages
+% mpc_sys.OutputGroup.MO = 1:q*ny; % Measured Output
+% 
+% mpc_sys.InputGroup.MV = 1:nu; % Munipulated Variable indices
+% mpc_sys.InputGroup.UD = nu + (1:CO); % unmeasured disturbance indices, one for each 
+% 
+% tuning_weight = 1; % Smaller = robust, Larger = aggressive
+% mpc_drone_2d = mpc(mpc_sys,Ts_mpc)
+% 
+% % Manually set covariance
+% x_mpc = mpcstate(mpc_drone_2d); % Initial state
+% covariance = zeros(size(x_mpc.Covariance));
+% covariance(y_rows, y_rows) = diag([0.002, 0.001, 0]);
+% x_mpc = mpcstate(mpc_drone_2d, [], [], [], [], covariance);
+% 
+% t_p = 6; % For guidance, minimum desired settling time (s)
+% t_c = 5; % desired control settling time
+% mpc_drone_2d.PredictionHorizon  = floor(t_p/Ts_mpc); %t_s/Ts_mpc; % Prediction horizon (samples), initial guess according to MATLAB: Choose Sample Time and Horizons
+% mpc_drone_2d.ControlHorizon     = floor(t_c/Ts_mpc); % Control horizon (samples)
+% 
+% mpc_drone_2d.Weights.OutputVariables        = [1, 1, 0, 0, zeros(1, (q-1)*ny)]*tuning_weight;
+% mpc_drone_2d.Weights.ManipulatedVariables   = 1e-3*[1, 1]*tuning_weight; % Weights of delay coordinates to 0
+% mpc_drone_2d.Weights.ManipulatedVariablesRate     = 1e-1*[5, 1]/tuning_weight;
+% 
+% % Output bounds
+% theta_min = -30*(pi/180);
+% theta_max = abs(theta_min); % Anton's pitch command constraint
+% 
+% mpc_drone_2d.OV(3).Min = theta_min;
+% mpc_drone_2d.OV(3).Max = theta_max;
+% 
+% % Input bounds
+% 
+% % Normalised
+% F_r_z_min = -150;
+% F_r_z_max = abs((M + m)*g);
+% 
+% F_r_x_max = F_r_z_max;
+% F_r_x_min = -F_r_x_max;
+% 
+% mpc_drone_2d.MV(1).Min = F_r_x_min;
+% mpc_drone_2d.MV(1).Max = F_r_x_max;
+% 
+% mpc_drone_2d.MV(2).Min = F_r_z_min;
+% mpc_drone_2d.MV(2).Max = F_r_z_max;
+% 
+% % Display
+% mpc_drone_2d 
+% 
+% % Nominal operating conditions for AMPC block
+% u_bar = [0; M*g];
+% U_nom = zeros(nu,1);
+% X_nom = zeros(q*ny,1);
+% Y_nom = zeros(q*ny,1);
+% DX_nom = zeros(q*ny,1);
+% 
+% Way points
+num_waypoints = 100; % Number of waypoints included in command
+point_time_interval = 0; % Initial interval between commands
 
-% MPC object
-old_status = mpcverbosity('off'); % No display messages
-mpc_sys.OutputGroup.MO = 1:q*ny; % Measured Output
+waypoints = table('Size', [(num_waypoints+1)*2, 3], 'VariableTypes', ["double", "double", "double"]);
+waypoints.Properties.VariableNames = {'point_time', 'x_coord', 'z_coord'};
 
-mpc_sys.InputGroup.MV = 1:nu; % Munipulated Variable indices
-mpc_sys.InputGroup.UD = nu + (1:CO); % unmeasured disturbance indices, one for each 
+x_coord = 0;
+z_coord = -5;
+waypoints(1,:) = table(0,                   x_coord, z_coord); % Initial point
+waypoints(2,:) = table(point_time_interval, x_coord, z_coord); % Initial point for 6 seconds
 
-tuning_weight = 1; % Smaller = robust, Larger = aggressive
-mpc_drone_2d = mpc(mpc_sys,Ts_mpc)
-getEstimator(mpc_drone_2d)
+x_min        = -2;     x_max         = 2; % (m) minimum and maximum coordinates for waypoints
+z_min        = -4;     z_max        = 0;
+interval_min = 4;       interval_max = 10;  % (s) minimum and maximum TIME interval between commands
 
-t_p = 10; % For guidance, minimum desired settling time (s)
-t_c = t_p - 5; % desired control settling time
-mpc_drone_2d.PredictionHorizon  = floor(t_p/Ts_mpc); %t_s/Ts_mpc; % Prediction horizon (samples), initial guess according to MATLAB: Choose Sample Time and Horizons
-mpc_drone_2d.ControlHorizon     = floor(t_c/Ts_mpc); % Control horizon (samples)
+point_time = point_time_interval;
+rng(0); % Initialise random number generator for repeatability
+for i = 1:num_waypoints
+    point_time_interval = (interval_max - interval_min).*rand() + interval_min; % (s) random time interval between commands
+    point_time = point_time + point_time_interval;
 
-mpc_drone_2d.Weights.OutputVariables        = [1, 1, 0, 0, zeros(1, (q-1)*ny)]*tuning_weight;
-mpc_drone_2d.Weights.ManipulatedVariables   = 1e-3*[1, 1]*tuning_weight; % Weights of delay coordinates to 0
-mpc_drone_2d.Weights.ManipulatedVariablesRate     = 1e-1*[5, 1]/tuning_weight;
+    waypoints(2*i,  :) = table(point_time, x_coord, z_coord); % Previous point    
+    x_coord    = (x_max - x_min).*rand() + x_min; % x coordinate of next waypoint
+    z_coord    = (z_max - z_min).*rand() + z_min; % z coordinate of next waypoint   
+    waypoints(2*i+1,:) = table(point_time, x_coord, z_coord); % Next point
+end
+i = i+1;
+waypoints(2*i,  :) = table(point_time+interval_max, x_coord, z_coord); % Add time to reach final point
 
-% Output bounds
-theta_min = -30*(pi/180);
-theta_max = abs(theta_min); % Anton's pitch command constraint
-
-mpc_drone_2d.OV(3).Min = theta_min;
-mpc_drone_2d.OV(3).Max = theta_max;
-
-% Input bounds
-
-% Normalised
-F_r_z_min = -150;
-F_r_z_max = abs((M + m)*g);
-
-F_r_x_max = F_r_z_max;
-F_r_x_min = -F_r_x_max;
-
-mpc_drone_2d.MV(1).Min = F_r_x_min;
-mpc_drone_2d.MV(1).Max = F_r_x_max;
-
-mpc_drone_2d.MV(2).Min = F_r_z_min;
-mpc_drone_2d.MV(2).Max = F_r_z_max;
-
-% Display
-mpc_drone_2d 
-
-% Nominal operating conditions for AMPC block
-u_bar = [0; M*g];
-U_nom = zeros(nu,1);
-X_nom = zeros(q*ny,1);
-Y_nom = zeros(q*ny,1);
-DX_nom = zeros(q*ny,1);
-
-
-
-
-
-
-
-
-
-
-
+waypoints_ts = timeseries([waypoints.x_coord, waypoints.z_coord], waypoints.point_time); % timeseries object for From Workspace block
 

@@ -1,14 +1,22 @@
 %% Implentation of Hankel Alternative View Of Koopman for 2D Drone
 % close all;
 
-% simulation_data_file = 'No_payload_data_5';
+% Extract data
+% simulation_data_file = 'With_payload_data_2';
 % load(['Data/', simulation_data_file, '.mat']) % Load simulation data
 
+% Ts = 0.03;     % Desired sample time
+% y_rows = [1,2,3,4];
+
+% Resample time series to desired sample time and training period
+x_resamp = resample(out.x, 10:Ts:(out.x.Time(end)) );  
+u_resamp = resample(out.u, 10:Ts:(out.x.Time(end)) );  
+
 % Extract data
-u_data  = out.F_r.Data';
-x_data  = out.x.Data';
-y_data  = x_data([1,2,3],:); % Measurement data (x, z, theta)
-t       = out.x.Time'; % Time
+u_data  = u_resamp.Data';
+x_data  = x_resamp.Data';
+y_data  = x_data(y_rows,:); % Measurement data
+t       = x_resamp.Time';
 
 % Adjust for constant disturbance / mean control values
 % u_bar = mean(u_data,2); % Input needed to keep at a fixed point
@@ -26,7 +34,6 @@ t_test = t(:,end-N_test+1:end);
 nx = size(x_data,1); % number of states
 ny = size(y_data,1); % number of measurements
 nu = size(u_data,1); % number of inputs
-Ts = t(2)-t(1);     % Sample time of data
 N  = length(t);     % Number of data samples
 
 % Add noise
@@ -36,7 +43,7 @@ rng(1); % Repeatable random numbers
 y_data_noise = y_data + sigma*randn(size(y_data));
 
 % Training data - Last sample of training is first sample of testing
-N_train = 600; % Number of sampels in training data
+N_train = 60/Ts; % Number of sampels in training data
 y_train = y_data_noise(:,end-N_test-N_train+2:end-N_test+1); % Use noisy data
 u_train = u_data(:,end-N_test-N_train+2:end-N_test+1);
 t_train = t(:,end-N_test-N_train+2:end-N_test+1);
@@ -58,7 +65,7 @@ best_results = results(best_row,:)
 q = double(best_results.q);
 p = double(best_results.p);
 
-only_q = 1;
+only_q = 0;
 if only_q
     q = 11;
     q_rows = find(results.q == q);
@@ -122,7 +129,7 @@ B  = AB(:,(q*ny+1):end);
 
 % Compare to testing data
 
-%% Run with A_bar, B_bar and x
+%% Run with HAVOK (A_hat, B_hat and x)
 figure;
 plot(U1(:,1:5))
 title('First 5 modes of SVD')
@@ -146,7 +153,7 @@ y_hat_bar = Y_hat(end-ny+1:end, :); % Extract only non-delay time series (last m
 MAE_bar = sum(abs(y_hat_bar - y_test), 2)./N_test % For each measured state
 
 
-%% Run with A and x
+%% Run with DMD (A and x)
 
 % Initial condition
 y_hat_0 = zeros(q*ny,1);
@@ -180,7 +187,7 @@ plot(t_test, y_hat_bar, 'r--', 'LineWidth', 1); % Plot only non-delay coordinate
 plot((D + t(N-N_test-N_train)).*[1, 1], ylim, 'r');
 plot(t(N-N_test-N_train).*[1,1], ylim, 'k');
 plot(t(N-N_test).*[1,1], ylim, 'k');
-title('Training and Testing data vs Model');
+title('Training and Testing data vs Model (red = HAVOK, black = DMD)');
 % legend('','','','','','', 'x hat','z hat','theta hat', 'x hat bar','z hat bar','theta hat bar');
 hold off;
 

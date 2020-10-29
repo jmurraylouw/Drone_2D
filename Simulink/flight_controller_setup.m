@@ -151,10 +151,9 @@ mpc_drone_2d = mpc(mpc_sys,Ts_mpc);
 % Manually set covariance
 x_mpc = mpcstate(mpc_drone_2d); % Initial state
 covariance = zeros(size(x_mpc.Covariance));
-covariance(y_rows, y_rows) = diag([0.001, 0.001, 0]);
+covariance(y_rows, y_rows) = diag([0.002, 0.001, 0]);
 x_mpc = mpcstate(mpc_drone_2d, [], [], [], [], covariance);
 
-% Guide: PH so PH*Ts == desired responce time
 t_p = 6; % For guidance, minimum desired settling time (s)
 t_c = 5; % desired control settling time
 mpc_drone_2d.PredictionHorizon  = floor(t_p/Ts_mpc); %t_s/Ts_mpc; % Prediction horizon (samples), initial guess according to MATLAB: Choose Sample Time and Horizons

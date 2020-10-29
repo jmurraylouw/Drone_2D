@@ -8,9 +8,9 @@ clear all;
 total_timer = tic; % Start timer for this script
 
 % Search space
-q_min = 1; % Min value of q in grid search
-q_max = 40; % Max value of q in grid search
-q_increment = 5; % Increment value of q in grid search
+q_min = 3; % Min value of q in grid search
+q_max = 100; % Max value of q in grid search
+q_increment = 2; % Increment value of q in grid search
 
 p_min = 3; % Min value of p in grid search
 p_max = 200; % Max value of p in grid search
@@ -20,14 +20,21 @@ q_search = q_min:q_increment:q_max; % List of q parameters to search in
 % p_search defined before p for loop
 
 % Extract data
-simulation_data_file = 'No_payload_data_6';
+simulation_data_file = 'With_payload_data_2';
 load(['Data/', simulation_data_file, '.mat']) % Load simulation data
 
-u_data  = out.F_r.Data';
-x_data  = out.x.Data';
-measured_states = [1,2,3];
-y_data  = x_data(measured_states,:); % Measurement data (x, z, theta)
-t       = out.x.Time'; % Time
+Ts = 0.03;     % Desired sample time
+y_rows = [1,2,3,4];
+
+% Resample time series to desired sample time and training period
+x_resamp = resample(out.x, 10:Ts:(out.x.Time(end)) );  
+u_resamp = resample(out.u, 10:Ts:(out.x.Time(end)) );  
+
+% Extract data
+u_data  = u_resamp.Data';
+x_data  = x_resamp.Data';
+y_data  = x_data(y_rows,:); % Measurement data
+t       = x_resamp.Time';
 
 % Adjust for constant disturbance / mean control values
 u_bar = mean(u_data,2); % Input needed to keep at a fixed point
@@ -45,18 +52,17 @@ t_test = t(:,end-N_test+1:end);
 nx = size(x_data,1); % number of states
 ny = size(y_data,1); % number of measurements
 nu = size(u_data,1); % number of inputs
-Ts = t(2)-t(1);     % Sample time of data
 N  = length(t);     % Number of data samples
 
 % Add noise
 rng('default');
 rng(1); % Repeatable random numbers
-sigma = 0.001; % Noise standard deviation
+sigma = 0; % Noise standard deviation
 y_data_noise = y_data + sigma*randn(size(y_data));
 
 % Training data - Last sample of training is first sample of testing
 % ??? later add N_train to results table being saved
-N_train = 500; % Number of sampels in training data x
+N_train = 60/Ts; % Number of sampels in training data x
 y_train = y_data_noise(:,end-N_test-N_train+2:end-N_test+1); % Use noisy data
 u_train = u_data(:,end-N_test-N_train+2:end-N_test+1);
 t_train = t(:,end-N_test-N_train+2:end-N_test+1);
