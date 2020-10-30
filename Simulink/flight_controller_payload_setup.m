@@ -39,8 +39,8 @@ C_Dz  = 0.2; % Damping coef. of drone in z direction (f = cy*zdot)
 rho   = 1.225; % Air density (kg/m^3)
 tau   = 0.07; % Motor time constant
 
-m     = 2; % Mass of swinging payload (kg)
-l     = 1; % Length of pendulum (m)
+m     = 1; % Mass of swinging payload (kg)
+l     = 2; % Length of pendulum (m)
 cbeta = 0.01; % Rotational damping coef of payload at connection
 
 % Mixing Matrix
@@ -59,7 +59,7 @@ lambda = 0.985; % Exponential forgetting factor of moving average to smooth out 
 Ts_mpc = 0.03; % Guide: between 10% to 25% of desired response time
 
 % Excitement signal
-Ts_excite = Ts_mpc*4; % Sample time
+Ts_excite = 0; % Sample time
 var_excite = 1; % Variance of excitement signal (pulse train)
 
 simulation_data_file = 'With_payload_data_2';
@@ -68,30 +68,31 @@ load(['Data/', simulation_data_file, '.mat']) % Load simulation data
 % Disturbance model to account for model uncertainty (eliminate steady-state error)
 CO = 2; % number of Controlled Outputs (x and z). theta is not controlled to a reference
 dist_influence = 0; % Disturbances include uncertainty in model
-B_ud = dist_influence*[eye(CO); zeros(q*ny - CO, CO)]; % B of unmeasured disturbance, for distrubance force in x and z
 
 
-model = 'havok'; % Choose which model to use for MPC
+model = 'dmd'; % Choose which model to use for MPC
 switch model
     case 'dmd'
         start_time = 20;
         end_time = 100;
         y_rows = 1:4;
-        % q = 6;
+        q = 6;
         sigma = 0;
         plot_prediction = 0;
 
         [A_dmd, B_dmd] = model_DMD(out, start_time, end_time, Ts_mpc, q, y_rows, sigma, plot_prediction);
-
+        
         % Change model structure so delays are included in A, not B 
         A_mpc = [A_dmd,       B_dmd(:, 1:end-nu);
                  eye((q-1)*ny),   zeros((q-1)*ny,ny)];
 
         % B_mpc = [B_dmd(:, end-nu+1:end); zeros((q-1)*ny, nu)];
+        B_ud = dist_influence*[eye(CO); zeros(q*ny - CO, CO)]; % B of unmeasured disturbance, for distrubance force in x and z
         B_mpc = [[B_dmd(:, end-nu+1:end); zeros((q-1)*ny, nu)], B_ud];
     
     case 'havok'
         A_mpc = A_havok;
+        B_ud = dist_influence*[eye(CO); zeros(q*ny - CO, CO)]; % B of unmeasured disturbance, for distrubance force in x and z
         B_mpc = [B_havok, B_ud];
         
     otherwise
@@ -201,7 +202,7 @@ waypoints.Properties.VariableNames = {'point_time', 'x_coord', 'z_coord'};
 % waypoints(2*i,  :) = table(point_time+interval_max, x_coord, z_coord); % Add time to reach final point
 
 % Regular steps
-point_time_interval = 20; % (s) interval between commands
+point_time_interval = 50; % (s) interval between commands
 step_size = 1;
 x_coord = step_size;
 z_coord = 0;

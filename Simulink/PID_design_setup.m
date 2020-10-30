@@ -67,99 +67,65 @@ wb = 12.52 + wb_buffer; % Desired dandwidth (rad/s)
 ts = 0.6; % 2% settling time (s)
 
 % Percentage overshoot:
-zeta = sqrt( (log(PO/100))^2 / (pi^2 + (log(PO/100))^2) );  % Damping ratio
+zeta = 1/sqrt(2);  % Optimally damped (damping ratio)
+% zeta = sqrt( (log(PO/100))^2 / (pi^2 + (log(PO/100))^2) );  % Damping ratio
 theta_pole = atan(sqrt(1 - zeta^2) / zeta); % Max angle from real axis to dominant pole
 
 % Settling time:
 sigma_p = log(0.02)/ts; % Real part limit of dominant pole, p for pole to avoid confusion with noise
 
-% PI controller for dtheta:
+% Place zeros at specific locations
+zeta = 1/sqrt(2); % optimal damping
 
-% D_PI = Kp*(s + z_c) / s
-% Use I controller to reject disturbances (closed loop becomes type 2)
-% Use P controller to place in performance envelope
+desired_pole = -9.83 + 1i*7.72; % From Anton rltool
+z1 = -0.2345; % From Anton design
+z2 = -28.4322;
 
-% Pole of D_PI is at origin, so let zero be close to origin: z_c = 0.1
-z_c = 0.1; % z_c = ki/kp
-D_pi = (s + z_c) / s; % transfer function of Pi controller without kp
+D_pid = (s - z1)*(s - z2)/(s); % Multiply by k_rl coefficient
 
-% Calculate Kp needed for desired bandwidth
-kp_min = 0.001;
-kp_max = 10;
-wb_tol = 0.001; % tolerance on bandwidth frequency
-kp_dtheta = kp_for_bandwidth(D_pi*G_dtheta,wb,wb_tol,kp_min,kp_max);
-D_pi = kp_dtheta*D_pi;
-
-% Calculate ki from z_c and kp
-ki_dtheta = kp_dtheta*z_c;
+[rl_poles, rl_gains] = rlocus(sym2tf(D_pid*G_dtheta)); % get poles and corresponding gains from rl plot
+[~, rl_index] = min(min(abs(desired_pole - rl_poles))); % get column index of pole on rl closed to desired pole
+cl_poles = rl_poles(:,rl_index); % Closed loop pole
+k_rl = rl_gains(:,rl_index); % Root locus gain
 
 % Draw root locus
 figure;
-rlocus(sym2tf(D_pi*G_dtheta));
-title('G(dtheta) with PI controller root locus varied by kp')
+rlocus(sym2tf(D_pid*G_dtheta));
+title('G(dtheta) with PID controller where 2 zeros are placed')
 hold on;
-
-% Plot current poles for kp needed for bandwidth
-current_pole = rlocus(sym2tf(D_pi*G_dtheta), kp_dtheta);
-plot(real(current_pole), imag(current_pole), 'rs', 'Markersize', 7); % Plot current pole locatiosn
-ylim([min(imag(current_pole)), max(imag(current_pole))]*1.2); % adjust ylim to include plotted poles
-
-% Plot requirement limits
-plot([1, 1]*sigma_p, ylim, '--'); % Settling time requirement limit
-x_theta = max(ylim)/tan(theta_pole); % x to plot theta line
-plot([-1, 0, -1]*x_theta, [1, 0, -1]*max(ylim), '--');
-
-% PID controller for dtheta:
-
-N_dtheta = 2*wb; % Frequency of Low Pas Filter (Manually tune)
-
-% Manual root locus plot of closed loop system with PID controller
-syms kd_dtheta
-D_pid = @(kd_dtheta) kp_dtheta + ki_dtheta*(1/s) + kd_dtheta*s*(N_dtheta/(1 + N_dtheta));
-G_dtheta_cl = @(kd_dtheta) D_pid(kd_dtheta)*G_dtheta/(1 + D_pid(kd_dtheta)*G_dtheta); % Closed loop tf with P control for dtheta
-
-figure;
-hold on;
-title('G(dtheta) with PID controller root locus varied by kd');
-
-% for kd_dtheta = 0:0.01:0.5
-%     poles = pole(sym2tf(G_dtheta_cl(kd_dtheta)));
-%     plot(3real(poles), imag(poles), 'k.'); % Plot pole of current k
-% end
-
-% Starting poles
-poles = pole(sym2tf(G_dtheta_cl(0)));
-plot(real(poles), imag(poles), 'bx'); % Plot pole of current k
+plot(real(cl_poles), imag(cl_poles), 'rs'); % Plot poles
 
 % Plot requirement limits
 plot([1, 1]*sigma_p, ylim, '--'); % Settling time requirement limit
 x_theta = max(ylim)/tan(theta_pole); % x to plot theta line
 plot([-1, 0, -1]*x_theta, [1, 0, -1]*max(ylim), '--');
 grid on;
+hold off
 
-% Choose kd to place poles within desired region
-kd_dtheta = 0.095;
-D_pid = D_pid(kd_dtheta);
-G_dtheta_cl = G_dtheta_cl(kd_dtheta);
+% Determine P,I,D gains from zeros and rl gain
+% kd*s^2 + kp*s + ki = k_rl*(s - z1)*(s - z2)
+kp_dtheta = k_rl*(-z1 - z2);
+ki_dtheta = k_rl*(z1*z2);
+kd_dtheta = k_rl;
 
-% Current poles
-poles = pole(sym2tf(G_dtheta_cl));
-plot(real(poles), imag(poles), 'rs', 'MarkerSize', 7); % Plot pole of current k
+% Final controller and plant
+D_pid = kp_dtheta + (1/s)*ki_dtheta + (s)*kd_dtheta; % Multiply by k_rl coefficient
+G_dtheta_cl = close_loop(D_pid*G_dtheta);
+G_dtheta_cl_tf = sym2tf(G_dtheta_cl);
 
 % Step responce
-t_dist = 10;
-controller_step_responce(G_dtheta, [D_pid, D_pi, kp_dtheta], {'PID', 'PI', 'P'}, t_dist)
-title('Step responce of dtheta controllers')
+% t_dist = 4;
+% controller_step_responce(G_dtheta, [D_pid, D_pi, kp_dtheta], {'PID', 'PI', 'P'}, t_dist)
+% title('Step responce of dtheta controllers')
 
 % Performance parameters
-sys = sym2tf(G_dtheta_cl);
-dtheta_performance = stepinfo(sys);
-wb = bandwidth(sys);
+dtheta_performance = stepinfo(G_dtheta_cl_tf);
+wb = bandwidth(G_dtheta_cl_tf);
 dtheta_performance.Bandwidth = wb;
 slow_factor = wb_inner/wb; % Factor that outer controller is slower than inner controller
 dtheta_performance.slow_factor = slow_factor;
-dtheta_performance
 
+dtheta_performance
 %%-------------------------------------------------------------
 %% Angle controller
 %%-------------------------------------------------------------
@@ -178,7 +144,7 @@ ts = 1.95; % 2% settling time (s)
 % TF from dtehta_sp to theta (seen by angular rate controller)
 % theta = (1/s)*dtheta;
 % dtheta = G_dtheta_cl*theta_sp;
-G_theta = simplifyFraction(G_dtheta_cl*(1/s));
+G_theta = (G_dtheta_cl*(1/s));
 G_theta_tf = sym2tf(G_theta);
 
 % Calculate Kp needed for desired bandwidth (Binary search)
@@ -187,9 +153,7 @@ kp_min = 0.001;
 kp_max = 10;
 kp_theta = kp_for_bandwidth(G_theta,wb,wb_tol,kp_min,kp_max);
 
-% Transfer function inclucding P controller
-D_p = kp_theta;
-G_theta_cl = D_p*G_theta/(1 + D_p*G_theta); % Closed loop tf with PID control for theta
+G_theta_cl = close_loop(kp_theta*G_theta); % Closed loop tf with PID control for theta
 % G_theta_cl = theta/theta_sp
 
 % % Bode of closed loop plant with Kp
@@ -205,7 +169,7 @@ title('G(theta) with P controller root locus varied by kp')
 hold on;
 
 % Plot current poles for kp needed for bandwidth
-current_pole = rlocus(sym2tf(kp_theta*G_theta), kp_theta);
+current_pole = rlocus(G_theta_tf, kp_theta);
 plot(real(current_pole), imag(current_pole), 'rs', 'Markersize', 7); % Plot current pole locatiosn
 
 % Settling time:
@@ -220,9 +184,9 @@ controller_step_responce(G_theta, D_p, {'P'}, t_dist)
 title('Step responce of theta controllers')
 
 % Performance parameters
-sys = sym2tf(D_p*G_theta/(1 + D_p*G_theta));
-theta_performance = stepinfo(sys);
-wb = bandwidth(sys);
+G_theta_cl_tf = sym2tf(close_loop(D_p*G_theta));
+theta_performance = stepinfo(G_theta_cl_tf);
+wb = bandwidth(G_theta_cl_tf);
 theta_performance.Bandwidth = wb;
 slow_factor = wb_inner/wb; % Factor that outer controller is slower than inner controller
 theta_performance.slow_factor = slow_factor;
@@ -232,16 +196,7 @@ theta_performance
 %% X Velocity controller
 %%-------------------------------------------------------------
 
-%% Design requirements:
-
-% Reject disturbances
-% Zero steady-state error
-PO = 12; % Percentage Overshoot (%)
-wb_inner = theta_performance.Bandwidth;
-wb = 2.166; % Desired dandwidth (rad/s). Slower than previous wb by a factor
-ts = 11.6; % 2% settling time (s)
-
-% Plant Transfer Function:
+% Modelling: Plant Transfer Function:
 
 % F_x_r to theta_sp:
 % ------------------
@@ -267,6 +222,7 @@ syms theta dx
 F_x = -2*delta_T*(theta);
 C_x_lin = C_Dx*dx_bar; % Linearised drag coef. at average velocity
 eqn = (F_x - C_x_lin*rho*dx == s*M*dx); % Equation of Newton 2nd law in x direction
+eqn = (F_x == s*M*dx); % Equation of Newton 2nd law in x direction
 dx = solve(eqn, dx); % Solve for dx according to F_x from Newton 2nd law
 G_th_dx = dx/theta; % TF from theta to dx
 
@@ -274,7 +230,14 @@ G_th_dx = dx/theta; % TF from theta to dx
 G_dx = G_F_x_r*G_theta_cl*G_th_dx; % dx/F_xr
 G_dx_tf = sym2tf(G_dx);
 
-% PI controller for dx:
+%% Design requirements:
+
+% Reject disturbances
+% Zero steady-state error
+PO = 12; % Percentage Overshoot (%)
+wb_inner = theta_performance.Bandwidth;
+wb = 2.166; % Desired dandwidth (rad/s). Slower than previous wb by a factor
+ts = 11.6; % 2% settling time (s)
 
 % Percentage overshoot:
 zeta = sqrt( (log(PO/100))^2 / (pi^2 + (log(PO/100))^2) );  % Damping ratio
@@ -283,88 +246,61 @@ theta_pole = atan(sqrt(1 - zeta^2) / zeta); % Max angle from real axis to domina
 % Settling time:
 sigma_p = log(0.02)/ts; % Real part limit of dominant pole, p for pole to avoid confusion with noise
 
-% Now implement PI controller
-% D_PI = Kp*(s + z_c) / s
-% Use I controller to reject disturbances (closed loop becomes type 2)
-% Use P controller to place in performance envelope
+desired_pole = -2 + 1i*1;
 
-% Pole of D_PI is at origin, so let zero be close to origin: z_c = 0.1
-z_c = 0.1; % z_c = ki/kp
-D_pi = (s + z_c) / s; % transfer function of Pi controller without kp
+% From Anton:
+syms zz1 zz2
+Kp_vn = 0.048; % Anton parameters
+Ki_vn = 0.008;
+Kd_vn = 0.002;
 
-% Place kp for bandwidth
-kp_min = 0.001;
-kp_max = 30;
-wb_tol = 0.001; % tolerance on bandwidth frequency
-kp_dx = kp_for_bandwidth(D_pi*G_dx,wb,wb_tol,kp_min,kp_max);
+% Place zeros of controller
+S = tf('s');
+z_dx = zero(Kp_vn+Ki_vn/S+Kd_vn*S); % Controller zeros for x velocity controller
+z1 = z_dx(1);
+z2 = z_dx(2);
 
-% Calculate ki from z_c and kp
-ki_dx = kp_dx*z_c;
-D_pi = kp_dx + ki_dx*(1/s); % PI controller TF
+D_pid = (s - z1)*(s - z2)/(s); % Need to multiply by k_rl coefficient
 
-% Root locus of plant with PI controller
+[rl_poles, rl_gains] = rlocus(sym2tf(D_pid*G_dx)); % get poles and corresponding gains from rl plot
+[~, rl_index] = min(min(abs(desired_pole - rl_poles))); % get column index of pole on rl closed to desired pole
+cl_poles = rl_poles(:,rl_index); % Closed loop pole
+k_rl = rl_gains(:,rl_index); % Root locus gain
+
+% Draw root locus
 figure;
-rlocus(sym2tf(D_pi*G_dx));
-title('G(dx) with PI controller root locus varied by kp')
+rlocus(sym2tf(D_pid*G_dx));
+ylim([-7, 7]);
+xlim([-5, 1]);
+title('G(dx) with PID controller where 2 zeros are placed')
 hold on;
-
-% Plot current poles for kp needed for bandwidth
-current_pole = rlocus(sym2tf(D_pi*G_dx), kp_dx);
-plot(real(current_pole), imag(current_pole), 'rs', 'Markersize', 7); % Plot current pole locatiosn
-ylim([min(imag(current_pole)), max(imag(current_pole))]*1.2); % adjust ylim to include plotted poles
+plot(real(cl_poles), imag(cl_poles), 'rs'); % Plot poles
 
 % Plot requirement limits
 plot([1, 1]*sigma_p, ylim, '--'); % Settling time requirement limit
 x_theta = max(ylim)/tan(theta_pole); % x to plot theta line
 plot([-1, 0, -1]*x_theta, [1, 0, -1]*max(ylim), '--');
 
-% PID controller for dx:
+% Determine P,I,D gains from zeros and rl gain
+% kd*s^2 + kp*s + ki = k_rl*(s - z1)*(s - z2)
+kp_dx = k_rl*(-z1 - z2);
+ki_dx = k_rl*(z1*z2);
+kd_dx = k_rl;
 
-% ???? Low pass filter (need to decide how to pick filter value
-N_dx = wb*2; % Frequency of Low Pas Filter (Manually tune)
-
-% Manual root locus plot of closed loop system with PID controller
-syms kd_dx
-% D_pid = @(kd_dx) kp_dx + ki_dx*(1/s) + kd_dx*s; % Without LPF
-D_pid = @(kd_dx) kp_dx + ki_dx*(1/s) + kd_dx*(N_dx/(1 + N_dx/s)); % Controller TF including low pass filter
-G_dx_cl = @(kd_dx) D_pid(kd_dx)*G_dx/(1 + D_pid(kd_dx)*G_dx); % Closed loop tf with P control for dtheta
-
-figure;
-hold on;
-for kd_dx = 0:0.1:2
-    poles = pole(sym2tf(G_dx_cl(kd_dx)));
-    plot3(real(poles), imag(poles), kd_dx*(real(poles)./real(poles)), 'k.'); % Plot pole of current k
-end
-
-% Starting poles
-poles = pole(sym2tf(G_dx_cl(0)));
-plot(real(poles), imag(poles), 'bx'); % Plot pole of current k
-
-% Plot requirement limits
-plot([1, 1]*sigma_p, ylim, '--'); % Settling time requirement limit
-x_theta = max(ylim)/tan(theta_pole); % x to plot theta line
-plot([-1, 0, -1]*x_theta, [1, 0, -1]*max(ylim), '--');
-
-% Choose kd to place poles within desired region
-kd_dx = 0; % Manually adjust
-
-% Insert final parameter into TFs
-D_pid = D_pid(kd_dx);
-G_dx_cl = G_dx_cl(kd_dx);
-
-% Current poles:
-poles = pole(sym2tf(G_dx_cl));
-plot3(real(poles), imag(poles), kd_dx*(real(poles)./real(poles)), 'rs', 'MarkerSize', 7); % Plot pole of current k
+% Final controller and plant
+D_pid = kp_dx + (1/s)*ki_dx + (s)*kd_dx; % Multiply by k_rl coefficient
+G_dx_cl = close_loop(D_pid*G_dx);
+G_dx_cl_tf = sym2tf(G_dx_cl);
 
 % Step responce
 t_dist = 10;
-controller_step_responce(G_dx, [D_pid, D_pi, kp_dx], {'PID', 'PI', 'P'}, t_dist)
+controller_step_responce(G_dx, [D_pid], {'PID'}, t_dist)
 title('Step responce of dx controllers')
 
 % Performance parameters
-sys = sym2tf(G_dx_cl);
-dx_performance = stepinfo(sys);
-wb = bandwidth(sys);
+G_theta_cl_tf = sym2tf(G_dx_cl);
+dx_performance = stepinfo(G_dx_cl_tf);
+wb = bandwidth(G_dx_cl_tf);
 dx_performance.Bandwidth = wb;
 slow_factor = wb_inner/wb; % Factor that outer controller is slower than inner controller
 dx_performance.slow_factor = slow_factor;
@@ -431,9 +367,9 @@ controller_step_responce(G_x, D_p, {'P'}, t_dist)
 title('Step responce of x controller')
 
 % Performance parameters
-sys = sym2tf(G_x_cl);
-x_performance = stepinfo(sys);
-wb = bandwidth(sys);
+G_theta_cl_tf = sym2tf(G_x_cl);
+x_performance = stepinfo(G_theta_cl_tf);
+wb = bandwidth(G_theta_cl_tf);
 x_performance.Bandwidth = wb;
 slow_factor = wb_inner/wb; % Factor that outer controller is slower than inner controller
 x_performance.slow_factor = slow_factor;
@@ -581,9 +517,9 @@ controller_step_responce(G_dz, [D_pid, D_pi, kp_dz], {'PID', 'PI', 'P'}, t_dist)
 title('Step responce of dz controllers')
 
 % Performance parameters
-sys = sym2tf(G_dz_cl);
-dz_performance = stepinfo(sys);
-wb = bandwidth(sys);
+G_theta_cl_tf = sym2tf(G_dz_cl);
+dz_performance = stepinfo(G_theta_cl_tf);
+wb = bandwidth(G_theta_cl_tf);
 dz_performance.Bandwidth = wb;
 slow_factor = wb_inner/wb; % Factor that outer controller is slower than inner controller
 dz_performance.slow_factor = slow_factor;
@@ -650,24 +586,24 @@ controller_step_responce(G_z, D_p, {'P'}, t_dist)
 title('Step responce of z controller')
 
 % Performance parameters
-sys = sym2tf(G_z_cl);
-z_performance = stepinfo(sys);
-wb = bandwidth(sys);
+G_theta_cl_tf = sym2tf(G_z_cl);
+z_performance = stepinfo(G_theta_cl_tf);
+wb = bandwidth(G_theta_cl_tf);
 z_performance.Bandwidth = wb;
 slow_factor = wb_inner/wb; % Factor that outer controller is slower than inner controller
 z_performance.slow_factor = slow_factor;
 z_performance
 
 %% Save gain values
-description = 'PID gain values and Linearised TF models from PID_design_setup.m for drone 2D';
-save('Data/Drone_2D_control_params.mat', 'description', ...
-'kp_dtheta', 'ki_dtheta', 'kd_dtheta', 'N_dtheta', ...
-'kp_theta', ...
-'kp_dx', 'ki_dx', 'kd_dx', 'N_dx', ...
-'kp_x', ...
-'kp_dz', 'ki_dz', 'kd_dz', 'N_dz', ...
-'kp_z', ...
-'G_dtheta_tf', 'G_theta_tf', 'G_dx_tf', 'G_x_tf', 'G_dz_tf', 'G_z_tf') % Linearised TF used to compare linear models with plant
+% description = 'PID gain values and Linearised TF models from PID_design_setup.m for drone 2D';
+% save('Data/Drone_2D_control_params.mat', 'description', ...
+% 'kp_dtheta', 'ki_dtheta', 'kd_dtheta', 'N_dtheta', ...
+% 'kp_theta', ...
+% 'kp_dx', 'ki_dx', 'kd_dx', 'N_dx', ...
+% 'kp_x', ...
+% 'kp_dz', 'ki_dz', 'kd_dz', 'N_dz', ...
+% 'kp_z', ...
+% 'G_dtheta_tf', 'G_theta_tf', 'G_dx_tf', 'G_x_tf', 'G_dz_tf', 'G_z_tf') % Linearised TF used to compare linear models with plant
 
 function TF = sym2tf(sym_TF)
 % Converts symbolic representation of transfer function
@@ -755,7 +691,9 @@ function controller_step_responce(G, D_array, Legend, t_dist)
 
 end
 
-
-
+function cl_sys = close_loop(ol_sys)
+% Create closed loop from open loop system
+    cl_sys = ol_sys/(1 + ol_sys);
+end
 
 
