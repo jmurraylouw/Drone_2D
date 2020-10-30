@@ -342,7 +342,6 @@ G_x_tf = sym2tf(G_x);
 % kp_max = 10;
 % kp_x = kp_for_bandwidth(G_x,wb,wb_tol,kp_min,kp_max)
 
-desired_pole = -1.0510 + 0.3185i; % From Anton
 desired_pole = -0.95 + 0.175i; % From Anton
 
 % Place poles at desired location
@@ -352,7 +351,7 @@ cl_poles = rl_poles(:,rl_index); % Closed loop pole
 kp_x = rl_gains(:,rl_index); % Root locus gain
 
 % Manually override
-kp_x = 0.35;
+kp_x = 0.35; % Tune to get desired settling time and over-shoot
 
 % Transfer function inclucding P controller
 G_x_cl = close_loop(kp_x*G_x); % Closed loop tf with PID control for x
@@ -402,7 +401,7 @@ close all
 % Zero steady-state error
 PO = 12; % Percentage Overshoot (%)
 wb_inner = motor_wb;
-wb = 2.9; % Desired dandwidth (rad/s). Slower than previous wb by a factor
+wb = 3.5; % Desired dandwidth (rad/s). Slower than previous wb by a factor
 ts = 11.6; % 2% settling time (s)
 
 % Plant Transfer Function
@@ -440,7 +439,9 @@ syms dz
 C_z_lin = C_Dz*dz_bar; % Linearised drag coef. at average velocity dz_bar
 
 % Linearise at hover, therefore ignore gravity
-eqn = (F_z - C_z_lin*rho*dz == s*M*dz); % Newton 2nd law in z direction
+% eqn = (F_z - C_z_lin*rho*dz == s*M*dz); % Newton 2nd law in z direction
+eqn = (F_z == s*M*dz); % Like Anton, no air damping
+
 dz = solve(eqn, dz); % Solve for dz in terms of F_z_r
 G_dz = dz/F_z_r; % TF from F_z_r to dz
 G_dz_tf = sym2tf(G_dz);
@@ -460,18 +461,14 @@ sigma_p = log(0.02)/ts; % Real part limit of dominant pole, p for pole to avoid 
 % Use P controller to place in performance envelope
 
 % Pole of D_PI is at origin, so let zero be close to origin: z_c = 0.1
-z_c = 0.1; % z_c = ki/kp
-D_pi = (s + z_c) / s; % transfer function of Pi controller without kp
+z_c = -0.1; % z_c = ki/kp
+D_pi = (s - z_c) / s; % transfer function of Pi controller without kp
 
 % Place kp for bandwidth
 kp_min = 0.001;
 kp_max = 30;
 wb_tol = 0.001; % tolerance on bandwidth frequency
 kp_dz = kp_for_bandwidth(D_pi*G_dz,wb,wb_tol,kp_min,kp_max);
-
-% Calculate ki from z_c and kp
-ki_dz = kp_dz*z_c;
-D_pi = kp_dz + ki_dz*(1/s); % PI controller TF
 
 % Root locus of plant with PI controller
 figure;
@@ -488,54 +485,17 @@ plot([1, 1]*sigma_p, ylim, '--'); % Settling time requirement limit
 x_theta = max(ylim)/tan(theta_pole); % x to plot theta line
 plot([-1, 0, -1]*x_theta, [1, 0, -1]*max(ylim), '--');
 
-% PID controller for dz:
+% Calculate ki from z_c and kp
+ki_dz = -kp_dz*z_c;
+D_pi = kp_dz + ki_dz*(1/s); % PI controller TF
+G_dz_cl = close_loop(D_pi*G_dz);
+G_dz_cl_tf = sym2tf(G_dz_cl);
 
-% ???? Low pass filter (need to decide how to pick filter value
-N_dz = wb*2; % Frequency of Low Pas Filter (Manually tune)
-
-% Manual root locus plot of closed loop system with PID controller
-syms kd_dz
-% D_pid = @(kd_dz) kp_dz + ki_dz*(1/s) + kd_dz*s; % Without LPF
-D_pid = @(kd_dz) kp_dz + ki_dz*(1/s) + kd_dz*(N_dz/(1 + N_dz/s)); % Controller TF including low pass filter
-G_dz_cl = @(kd_dz) D_pid(kd_dz)*G_dz/(1 + D_pid(kd_dz)*G_dz); % Closed loop tf with P control for dtheta
-
-figure;
-title('G(dz) with PID controller root locus varied by kp')
-hold on;
-% for kd_dz = 0:0.05:1.1
-%     poles = pole(sym2tf(G_dz_cl(kd_dz)));
-%     plot3(real(poles), imag(poles), kd_dz*(real(poles)./real(poles)), 'k.'); % Plot pole of current k
-% end
-
-% Starting poles
-poles = pole(sym2tf(G_dz_cl(0)));
-plot(real(poles), imag(poles), 'bx'); % Plot pole of current k
-
-% Plot requirement limits
-plot([1, 1]*sigma_p, ylim, '--'); % Settling time requirement limit
-x_theta = max(ylim)/tan(theta_pole); % x to plot theta line
-plot([-1, 0, -1]*x_theta, [1, 0, -1]*max(ylim), '--');
-
-% Choose kd to place poles within desired region
-kd_dz = 0; % Manually adjust
-
-% Insert final parameter into TFs
-D_pid = D_pid(kd_dz);
-G_dz_cl = simplifyFraction(G_dz_cl(kd_dz));
-
-% Current poles:
-poles = pole(sym2tf(G_dz_cl));
-plot3(real(poles), imag(poles), kd_dz*(real(poles)./real(poles)), 'rs', 'MarkerSize', 7); % Plot pole of current k
-
-% Step responce
-t_dist = 10;
-controller_step_responce(G_dz, [D_pid, D_pi, kp_dz], {'PID', 'PI', 'P'}, t_dist)
-title('Step responce of dz controllers')
+kd_dz = 0; % Only PI needed
 
 % Performance parameters
-G_theta_cl_tf = sym2tf(G_dz_cl);
-dz_performance = stepinfo(G_theta_cl_tf);
-wb = bandwidth(G_theta_cl_tf);
+dz_performance = stepinfo(G_dz_cl_tf);
+wb = bandwidth(G_dz_cl_tf);
 dz_performance.Bandwidth = wb;
 slow_factor = wb_inner/wb; % Factor that outer controller is slower than inner controller
 dz_performance.slow_factor = slow_factor;
@@ -553,7 +513,7 @@ dz_performance
 
 PO = 0; % Percentage Overshoot (%)
 wb_inner = dz_performance.Bandwidth;
-wb = 1; % Desired dandwidth (rad/s).
+wb = 1.3578; % Desired dandwidth (rad/s).
 ts = 11.51; % 2% settling time (s)
 
 % Plant Transfer Function
@@ -611,13 +571,13 @@ z_performance.slow_factor = slow_factor;
 z_performance
 
 %% Save gain values
-% description = 'PID gain values and Linearised TF models from PID_design_setup.m for drone 2D';
-% save('Data/Drone_2D_control_params.mat', 'description', ...
-% 'kp_dtheta', 'ki_dtheta', 'kd_dtheta', 'N_dtheta', ...
+% description = 'After redesign to match Antons controllers. PID gain values and Linearised TF models from PID_design_setup.m for drone 2D';
+% save('Data/Drone_2D_control_params_2.mat', 'description', ...
+% 'kp_dtheta', 'ki_dtheta', 'kd_dtheta', ...
 % 'kp_theta', ...
-% 'kp_dx', 'ki_dx', 'kd_dx', 'N_dx', ...
+% 'kp_dx', 'ki_dx', 'kd_dx', ...
 % 'kp_x', ...
-% 'kp_dz', 'ki_dz', 'kd_dz', 'N_dz', ...
+% 'kp_dz', 'ki_dz', 'kd_dz', ...
 % 'kp_z', ...
 % 'G_dtheta_tf', 'G_theta_tf', 'G_dx_tf', 'G_x_tf', 'G_dz_tf', 'G_z_tf') % Linearised TF used to compare linear models with plant
 
