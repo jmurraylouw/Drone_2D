@@ -2,7 +2,12 @@
 % Called from InitFunc callback
 
 % PID controllers
-load('Data/Drone_2D_control_params.mat'); % Load controller gain values
+load('Data/Drone_2D_control_params_4.mat'); % Load controller gain values
+
+% Low Pass Filter cut-off frequency
+N_dtheta = Inf;
+N_dx = 5*2*pi; % Rad/s
+N_dz = 5*2*pi; % Rad/s
 
 dx_sp_max = 12; % (m/s) Max x velocity command (x and z)
 dx_sp_min = -12; % (m/s) Min x velocity command (x and z)
@@ -34,14 +39,17 @@ M     = 4.5; % Mass of drone body (at fulcrum)
 I_yy  = 0.235; % Moment of inertia of drone body about body x axis
 r     = 0.49*1/sqrt(2); % Distance from each rotor force to COM of drone
 g     = -9.81; % Acceleration due to gravity (always negative)
-C_Dx  = 0.2 ; % Damping coef. of drone through air in x direction (f = C_Dx*xdot)
-C_Dz  = 0.2; % Damping coef. of drone in z direction (f = cy*zdot)
+C_Dx  = 0.2 ; % Damping coef. of drone through air in x direction
+C_Dz  = 0.2; % Damping coef. of drone in z direction
 rho   = 1.225; % Air density (kg/m^3)
 tau   = 0.07; % Motor time constant
 
-m     = 1; % Mass of swinging payload (kg)
+m     = 2; % Mass of swinging payload (kg)
 l     = 2; % Length of pendulum (m)
-cbeta = 0.01; % Rotational damping coef of payload at connection
+cbeta = 0.05; % Rotational damping coef of payload at connection
+
+C_px = 0.05; % Damping coef. of drone through air in x direction
+C_pz = 0.05; % Damping coef. of drone through air in z direction
 
 % Mixing Matrix
 MM = [-1, 1;

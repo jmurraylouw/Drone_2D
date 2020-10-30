@@ -8,9 +8,11 @@ syms M % Mass of drone body (at fulcrum)
 syms I_yy % Moment of inertia of drone body about body x axis
 syms r % Distance from each rotor force to COM of drone
 syms g % Acceleration due to gravity (always negative)
-syms C_Dx % Damping coef. of drone through air in x direction (f = C_Dx*xdot)
-syms C_Dz % Damping coef. of drone in z direction (f = cy*zdot)
+syms C_Dx % Damping coef. of drone through air in x direction (f = 0.5*rho*dx*abs(dx)*C_Dx)
+syms C_Dz % Damping coef. of drone in z direction
 syms rho % Air density
+syms C_px % Damping coef. of paylaod through air in x direction (f = 0.5*rho*dx*abs(dx)*C_Dx)
+syms C_pz % Damping coef. of payload in z direction
 syms t % Time
 
 syms m % Mass of swinging payload
@@ -64,7 +66,10 @@ Qz = -(T1 + T2)*cos(theta) - 0.5*rho*dz*abs(dz)*C_Dz; % NB: z is down
 % Non-conservative Torques
 % ?? no aerodynamic drag on rotation?
 Qtheta = T2*r - T1*r; % Torques caused by rotor forces
-Qbeta  = -cbeta*dbeta; % Torques caused air damping on rotation of cable
+
+F_wpx = -0.5*C_px*rho*diff(x_m,t)*abs(diff(x_m,t)); % Force due to drag of wind/air on payload in x direction
+F_wpz = -0.5*C_pz*rho*diff(z_m,t)*abs(diff(z_m,t)); % Force due to drag of wind/air on payload in z direction
+Qbeta  = -cbeta*dbeta + F_wpx*cos(beta)*l - F_wpz*sin(beta)*l; % Torques caused air damping on rotation of cable
 % Qbeta = 0; % try no damping
 
 % Lagrangian equations

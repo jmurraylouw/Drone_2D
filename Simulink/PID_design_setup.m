@@ -254,7 +254,8 @@ theta_pole = atan(sqrt(1 - zeta^2) / zeta); % Max angle from real axis to domina
 % Settling time:
 sigma_p = log(0.02)/ts; % Real part limit of dominant pole, p for pole to avoid confusion with noise
 
-desired_pole = -2 + 1i*1;
+desired_pole = -2.15;
+% desired_pole = -2.17 + 0.229i;
 
 % From Anton:
 syms zz1 zz2
@@ -306,7 +307,6 @@ controller_step_responce(G_dx, [D_pid], {'PID'}, t_dist)
 title('Step responce of dx controllers')
 
 % Performance parameters
-G_theta_cl_tf = sym2tf(G_dx_cl);
 dx_performance = stepinfo(G_dx_cl_tf);
 wb = bandwidth(G_dx_cl_tf);
 dx_performance.Bandwidth = wb;
@@ -342,7 +342,7 @@ G_x_tf = sym2tf(G_x);
 % kp_max = 10;
 % kp_x = kp_for_bandwidth(G_x,wb,wb_tol,kp_min,kp_max)
 
-desired_pole = -0.95 + 0.175i; % From Anton
+desired_pole = -0.721 + 0.236i; % From Anton
 
 % Place poles at desired location
 [rl_poles, rl_gains] = rlocus(G_x_tf); % get poles and corresponding gains from rl plot
@@ -350,8 +350,8 @@ desired_pole = -0.95 + 0.175i; % From Anton
 cl_poles = rl_poles(:,rl_index); % Closed loop pole
 kp_x = rl_gains(:,rl_index); % Root locus gain
 
-% Manually override
-kp_x = 0.35; % Tune to get desired settling time and over-shoot
+% % Manually override
+% kp_x = 0.35; % Tune to get desired settling time and over-shoot
 
 % Transfer function inclucding P controller
 G_x_cl = close_loop(kp_x*G_x); % Closed loop tf with PID control for x
@@ -571,15 +571,15 @@ z_performance.slow_factor = slow_factor;
 z_performance
 
 %% Save gain values
-% description = 'After redesign to match Antons controllers. PID gain values and Linearised TF models from PID_design_setup.m for drone 2D';
-% save('Data/Drone_2D_control_params_2.mat', 'description', ...
-% 'kp_dtheta', 'ki_dtheta', 'kd_dtheta', ...
-% 'kp_theta', ...
-% 'kp_dx', 'ki_dx', 'kd_dx', ...
-% 'kp_x', ...
-% 'kp_dz', 'ki_dz', 'kd_dz', ...
-% 'kp_z', ...
-% 'G_dtheta_tf', 'G_theta_tf', 'G_dx_tf', 'G_x_tf', 'G_dz_tf', 'G_z_tf') % Linearised TF used to compare linear models with plant
+description = 'Try to improve damping. PID gain values and Linearised TF models from PID_design_setup.m for drone 2D';
+save('Data/Drone_2D_control_params_4.mat', 'description', ...
+'kp_dtheta', 'ki_dtheta', 'kd_dtheta', ...
+'kp_theta', ...
+'kp_dx', 'ki_dx', 'kd_dx', ...
+'kp_x', ...
+'kp_dz', 'ki_dz', 'kd_dz', ...
+'kp_z', ...
+'G_dtheta_tf', 'G_theta_tf', 'G_dx_tf', 'G_x_tf', 'G_dz_tf', 'G_z_tf') % Linearised TF used to compare linear models with plant
 
 function TF = sym2tf(sym_TF)
 % Converts symbolic representation of transfer function
