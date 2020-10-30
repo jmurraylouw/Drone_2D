@@ -2,7 +2,9 @@
 % Called from InitFunc callback
 
 % PID controllers
-load('Data/Drone_2D_control_params_4.mat'); % Load controller gain values
+% _2 is most like Anton.
+% _4 is most damped
+load('Data/Drone_2D_control_params_2.mat'); % Load controller gain values
 
 % Low Pass Filter cut-off frequency
 N_dtheta = Inf;
@@ -45,11 +47,11 @@ rho   = 1.225; % Air density (kg/m^3)
 tau   = 0.07; % Motor time constant
 
 m     = 2; % Mass of swinging payload (kg)
-l     = 2; % Length of pendulum (m)
-cbeta = 0.05; % Rotational damping coef of payload at connection
+l     = 1; % Length of pendulum (m)
+cbeta = 0.4; % Rotational damping coef of payload at connection
 
-C_px = 0.05; % Damping coef. of drone through air in x direction
-C_pz = 0.05; % Damping coef. of drone through air in z direction
+C_px = 0.1; % Damping coef. of drone through air in x direction
+C_pz = 0.1; % Damping coef. of drone through air in z direction
 
 % Mixing Matrix
 MM = [-1, 1;
@@ -210,7 +212,7 @@ waypoints.Properties.VariableNames = {'point_time', 'x_coord', 'z_coord'};
 % waypoints(2*i,  :) = table(point_time+interval_max, x_coord, z_coord); % Add time to reach final point
 
 % Regular steps
-point_time_interval = 50; % (s) interval between commands
+point_time_interval = 30; % (s) interval between commands
 step_size = 1;
 x_coord = step_size;
 z_coord = 0;
