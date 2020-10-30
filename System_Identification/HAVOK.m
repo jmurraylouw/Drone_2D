@@ -2,7 +2,7 @@
 % close all;
 
 % Extract data
-simulation_data_file = 'With_payload_data_4';
+simulation_data_file = 'With_payload_data_5';
 load(['Data/', simulation_data_file, '.mat']) % Load simulation data
 
 Ts = 0.03;     % Desired sample time
@@ -25,7 +25,7 @@ y_train = x_train(y_rows,:);
 u_train = u_train.Data';
 
 % Testing data
-test_time = train_time +40;
+test_time = train_time +50;
 x_test = resample(out.x, test_time );  
 u_test = resample(out.u, test_time );  
 t_test = x_test.Time';
@@ -66,7 +66,7 @@ end
 
 only_q = 1; % Try best result for specific q
 if only_q
-    q = 10;
+    q = 50;
     q_rows = find(results.q == q);
     q_results = results(q_rows,:);
     best_row = find(q_results.MAE_mean == min(q_results.MAE_mean));
@@ -113,12 +113,12 @@ AB_tilde = V_til_2*pinv(V_til_1); % combined A and B matrix, side by side
 AB_tilde = stabilise(AB_tilde,3);
 
 % Convert to x coordinates
-AB_havoc = (U_tilde*S_tilde)*AB_tilde*pinv(U_tilde*S_tilde);
+AB_havok = (U_tilde*S_tilde)*AB_tilde*pinv(U_tilde*S_tilde);
 
 % System matrixes from HAVOK
-A_havoc = AB_havoc(1:q*ny, 1:q*ny);
-B_havoc = AB_havoc(1:q*ny, q*ny+1:end);
-% A_havoc = stabilise(A_havoc,10);
+A_havok = AB_havok(1:q*ny, 1:q*ny);
+B_havok = AB_havok(1:q*ny, q*ny+1:end);
+% A_havok = stabilise(A_havok,10);
 
 % DMD of Y
 Y2 = Y(:, 2:end  );
@@ -135,7 +135,7 @@ B  = AB(:,(q*ny+1):end);
 
 % Compare to testing data
 
-%% Run with HAVOK (A_havoc, B_havoc and x)
+%% Run with HAVOK (A_havok, B_havok and x)
 figure;
 plot(U1(:,1:5))
 title('First 5 modes of SVD')
@@ -151,7 +151,7 @@ end
 Y_hat = zeros(length(y_hat_0),N_test); % Empty estimated Y
 Y_hat(:,q) = y_hat_0; % Initial condition
 for k = q:N_test-1
-    Y_hat(:,k+1) = A_havoc*Y_hat(:,k) + B_havoc*u_test(:,k);
+    Y_hat(:,k+1) = A_havok*Y_hat(:,k) + B_havok*u_test(:,k);
 end
 
 y_hat_bar = Y_hat(1:ny, :); % Extract only non-delay time series

@@ -58,6 +58,10 @@ lambda = 0.985; % Exponential forgetting factor of moving average to smooth out 
 % Sample time of MPC:
 Ts_mpc = 0.03; % Guide: between 10% to 25% of desired response time
 
+% Excitement signal
+Ts_excite = Ts_mpc*4; % Sample time
+var_excite = 1; % Variance of excitement signal (pulse train)
+
 simulation_data_file = 'With_payload_data_2';
 load(['Data/', simulation_data_file, '.mat']) % Load simulation data
 
@@ -67,7 +71,7 @@ dist_influence = 0; % Disturbances include uncertainty in model
 B_ud = dist_influence*[eye(CO); zeros(q*ny - CO, CO)]; % B of unmeasured disturbance, for distrubance force in x and z
 
 
-model = 'havoc'; % Choose which model to use for MPC
+model = 'havok'; % Choose which model to use for MPC
 switch model
     case 'dmd'
         start_time = 20;
@@ -86,12 +90,12 @@ switch model
         % B_mpc = [B_dmd(:, end-nu+1:end); zeros((q-1)*ny, nu)];
         B_mpc = [[B_dmd(:, end-nu+1:end); zeros((q-1)*ny, nu)], B_ud];
     
-    case 'havoc'
-        A_mpc = A_havoc;
-        B_mpc = [B_havoc, B_ud];
+    case 'havok'
+        A_mpc = A_havok;
+        B_mpc = [B_havok, B_ud];
         
     otherwise
-        error("Choose only 'dmd' or 'havoc' ")
+        error("Choose only 'dmd' or 'havok' ")
 end
 
 C_mpc = eye(q*ny);
@@ -199,7 +203,7 @@ waypoints.Properties.VariableNames = {'point_time', 'x_coord', 'z_coord'};
 % Regular steps
 point_time_interval = 20; % (s) interval between commands
 step_size = 1;
-x_coord = 0;
+x_coord = step_size;
 z_coord = 0;
 point_time = 0;
 waypoints(1,:) = table(0, x_coord, z_coord); % Initial point
@@ -215,4 +219,4 @@ end
 waypoints(end,:) = table(200, x_coord, z_coord); % Final point
 
 waypoints_ts = timeseries([waypoints.x_coord, waypoints.z_coord], waypoints.point_time); % timeseries object for From Workspace block
-plot(waypoints_ts.Time, waypoints_ts.Data)
+% plot(waypoints_ts.Time, waypoints_ts.Data)
