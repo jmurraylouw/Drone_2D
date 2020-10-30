@@ -148,10 +148,16 @@ G_theta = (G_dtheta_cl*(1/s));
 G_theta_tf = sym2tf(G_theta);
 
 % Calculate Kp needed for desired bandwidth (Binary search)
-wb_tol = 0.001;
-kp_min = 0.001;
-kp_max = 10;
-kp_theta = kp_for_bandwidth(G_theta,wb,wb_tol,kp_min,kp_max);
+% wb_tol = 0.001;
+% kp_min = 0.001;
+% kp_max = 10;
+% kp_theta = kp_for_bandwidth(G_theta,wb,wb_tol,kp_min,kp_max);
+
+desired_pole = -4.64; % From Anton
+[rl_poles, rl_gains] = rlocus(G_theta_tf); % get poles and corresponding gains from rl plot
+[~, rl_index] = min(min(abs(desired_pole - rl_poles))); % get column index of pole on rl closed to desired pole
+cl_poles = rl_poles(:,rl_index); % Closed loop pole
+kp_theta = rl_gains(:,rl_index); % Root locus gain
 
 G_theta_cl = close_loop(kp_theta*G_theta); % Closed loop tf with PID control for theta
 % G_theta_cl = theta/theta_sp
@@ -165,6 +171,8 @@ G_theta_cl = close_loop(kp_theta*G_theta); % Closed loop tf with PID control for
 % Root locus of plant with P controller
 figure;
 rlocus(sym2tf(G_theta));
+ylim(14*[-1, 1]);
+xlim([-15, 5]);
 title('G(theta) with P controller root locus varied by kp')
 hold on;
 
@@ -180,11 +188,11 @@ plot([1, 1]*sigma_p, ylim, '--'); % Settling time requirement limit
 
 % Step responce
 t_dist = 10;
-controller_step_responce(G_theta, D_p, {'P'}, t_dist)
+controller_step_responce(G_theta, kp_theta, {'P'}, t_dist)
 title('Step responce of theta controllers')
 
 % Performance parameters
-G_theta_cl_tf = sym2tf(close_loop(D_p*G_theta));
+G_theta_cl_tf = sym2tf(close_loop(kp_theta*G_theta));
 theta_performance = stepinfo(G_theta_cl_tf);
 wb = bandwidth(G_theta_cl_tf);
 theta_performance.Bandwidth = wb;
@@ -325,34 +333,42 @@ ts = 11.51; % 2% settling time (s)
 % TF from x_sp to x (seen by position controller)
 % x = (1/s)*dx;
 % dx = G_dx_cl*x_sp;
-G_x = simplifyFraction(G_dx_cl*(1/s));
+G_x = (G_dx_cl*(1/s));
 G_x_tf = sym2tf(G_x);
 
-% Calculate Kp needed for desired bandwidth (Binary search)
-wb_tol = 0.001;
-kp_min = 0.001;
-kp_max = 10;
-kp_x = kp_for_bandwidth(G_x,wb,wb_tol,kp_min,kp_max);
+% % Calculate Kp needed for desired bandwidth (Binary search)
+% wb_tol = 0.001;
+% kp_min = 0.001;
+% kp_max = 10;
+% kp_x = kp_for_bandwidth(G_x,wb,wb_tol,kp_min,kp_max)
+
+desired_pole = -1.0510 + 0.3185i; % From Anton
+desired_pole = -0.95 + 0.175i; % From Anton
+
+% Place poles at desired location
+[rl_poles, rl_gains] = rlocus(G_x_tf); % get poles and corresponding gains from rl plot
+[~, rl_index] = min(min(abs(desired_pole - rl_poles))); % get column index of pole on rl closed to desired pole
+cl_poles = rl_poles(:,rl_index); % Closed loop pole
+kp_x = rl_gains(:,rl_index); % Root locus gain
+
+% Manually override
+kp_x = 0.35;
 
 % Transfer function inclucding P controller
-D_p = kp_x;
-G_x_cl = D_p*G_x/(1 + D_p*G_x); % Closed loop tf with PID control for x
+G_x_cl = close_loop(kp_x*G_x); % Closed loop tf with PID control for x
+G_x_cl_tf = sym2tf(G_x_cl);
 % G_x_cl = x/x_sp
-
-% % Bode of closed loop plant with Kp
-% figure;
-% bode(sym2tf(G_theta_cl));
-% title('G(theta) closed-loop with Kp for desired bandwidth');
-% grid on;
 
 % Root locus of plant with P controller
 figure;
-rlocus(sym2tf(G_x));
+rlocus(G_x_tf);
+ylim([-3, 3]);
+xlim([-3, 1]);
 title('G(x) with P controller root locus varied by kp')
 hold on;
 
 % Plot current poles for kp needed for bandwidth
-current_pole = rlocus(sym2tf(kp_x*G_x), kp_x);
+current_pole = pole(G_x_cl_tf);
 plot(real(current_pole), imag(current_pole), 'rs', 'Markersize', 7); % Plot current pole locatiosn
 
 % Settling time:
@@ -363,7 +379,7 @@ plot([1, 1]*sigma_p, ylim, '--'); % Settling time requirement limit
 
 % Step responce
 t_dist = 10;
-controller_step_responce(G_x, D_p, {'P'}, t_dist)
+controller_step_responce(G_x, kp_x, {'P'}, t_dist)
 title('Step responce of x controller')
 
 % Performance parameters
