@@ -46,7 +46,7 @@ C_Dz  = 0.2; % Damping coef. of drone in z direction
 rho   = 1.225; % Air density (kg/m^3)
 tau   = 0.07; % Motor time constant
 
-m     = 2; % Mass of swinging payload (kg)
+m     = 1.5; % Mass of swinging payload (kg)
 l     = 1; % Length of pendulum (m)
 cbeta = 0.4; % Rotational damping coef of payload at connection
 
@@ -66,11 +66,11 @@ lambda = 0.985; % Exponential forgetting factor of moving average to smooth out 
 % model_intervals = 10; 
 
 % Sample time of MPC:
-Ts_mpc = 0.03; % Guide: between 10% to 25% of desired response time
+Ts_mpc = 0.025;
 
 % Excitement signal
 Ts_excite = 0; % Sample time
-var_excite = 1; % Variance of excitement signal (pulse train)
+var_excite = 0; % Variance of excitement signal (pulse train)
 
 simulation_data_file = 'With_payload_data_2';
 load(['Data/', simulation_data_file, '.mat']) % Load simulation data
@@ -79,8 +79,8 @@ load(['Data/', simulation_data_file, '.mat']) % Load simulation data
 CO = 2; % number of Controlled Outputs (x and z). theta is not controlled to a reference
 dist_influence = 0; % Disturbances include uncertainty in model
 
-
-model = 'dmd'; % Choose which model to use for MPC
+% Internal plant model
+model = 'havok'; % Choose which model to use for MPC
 switch model
     case 'dmd'
         start_time = 20;
@@ -101,6 +101,7 @@ switch model
         B_mpc = [[B_dmd(:, end-nu+1:end); zeros((q-1)*ny, nu)], B_ud];
     
     case 'havok'
+        load('Data/havoc_model_1.mat')
         A_mpc = A_havok;
         B_ud = dist_influence*[eye(CO); zeros(q*ny - CO, CO)]; % B of unmeasured disturbance, for distrubance force in x and z
         B_mpc = [B_havok, B_ud];
@@ -134,7 +135,7 @@ mpc_sys.InputGroup.MV = 1:nu; % Munipulated Variable indices
 mpc_sys.InputGroup.UD = nu + (1:CO); % unmeasured disturbance indices, one for each 
 
 tuning_weight = 1; % Smaller = robust, Larger = aggressive
-mpc_drone_2d = mpc(mpc_sys,Ts_mpc)
+mpc_drone_2d = mpc(mpc_sys,Ts_mpc);
 
 % Manually set covariance
 x_mpc = mpcstate(mpc_drone_2d); % Initial state
@@ -184,50 +185,78 @@ Y_nom = zeros(q*ny,1);
 DX_nom = zeros(q*ny,1);
 
 % Way points
-num_waypoints = 3; % Number of waypoints included in command
+waypoint_opt = 'random x'; % waypoint option
+num_waypoints = 100; % Number of waypoints included in command
 
 waypoints = table('Size', [(num_waypoints+1)*2, 3], 'VariableTypes', ["double", "double", "double"]);
 waypoints.Properties.VariableNames = {'point_time', 'x_coord', 'z_coord'};
 
-% x_coord = 0;
-% z_coord = -5;
-% waypoints(1,:) = table(0,                   x_coord, z_coord); % Initial point
-% 
-% x_min        = -2;     x_max         = 2; % (m) minimum and maximum coordinates for waypoints
-% z_min        = -4;     z_max        = 0;
-% interval_min = 4;       interval_max = 10;  % (s) minimum and maximum TIME interval between commands
-% 
-% point_time = point_time_interval;
-% rng(0); % Initialise random number generator for repeatability
-% for i = 1:num_waypoints
-%     point_time_interval = (interval_max - interval_min).*rand() + interval_min; % (s) random time interval between commands
-%     point_time = point_time + point_time_interval;
-% 
-%     waypoints(2*i,  :) = table(point_time, x_coord, z_coord); % Previous point    
-%     x_coord    = (x_max - x_min).*rand() + x_min; % x coordinate of next waypoint
-%     z_coord    = (z_max - z_min).*rand() + z_min; % z coordinate of next waypoint   
-%     waypoints(2*i+1,:) = table(point_time, x_coord, z_coord); % Next point
-% end
-% i = i+1;
-% waypoints(2*i,  :) = table(point_time+interval_max, x_coord, z_coord); % Add time to reach final point
+switch waypoint_opt
+    case 'random xz'
+        x_coord = 0;
+        z_coord = -5;
+        waypoints(1,:) = table(0,                   x_coord, z_coord); % Initial point
 
-% Regular steps
-point_time_interval = 30; % (s) interval between commands
-step_size = 1;
-x_coord = step_size;
-z_coord = 0;
-point_time = 0;
-waypoints(1,:) = table(0, x_coord, z_coord); % Initial point
-for i = 1:num_waypoints
+        x_min        = -2;     x_max         = 2; % (m) minimum and maximum coordinates for waypoints
+        z_min        = -4;     z_max        = 0;
+        interval_min = 4;       interval_max = 10;  % (s) minimum and maximum TIME interval between commands
 
-    point_time = point_time + point_time_interval;
+        point_time = point_time_interval;
+        rng(0); % Initialise random number generator for repeatability
+        for i = 1:num_waypoints
+            point_time_interval = (interval_max - interval_min).*rand() + interval_min; % (s) random time interval between commands
+            point_time = point_time + point_time_interval;
 
-    waypoints(2*i,  :) = table(point_time, x_coord, z_coord); % Previous point    
-    x_coord    = x_coord + step_size; % x coordinate of next waypoint
-    z_coord    = 0; % z coordinate of next waypoint   
-    waypoints(2*i+1,:) = table(point_time, x_coord, z_coord); % Next point
+            waypoints(2*i,  :) = table(point_time, x_coord, z_coord); % Previous point    
+            x_coord    = (x_max - x_min).*rand() + x_min; % x coordinate of next waypoint
+            z_coord    = (z_max - z_min).*rand() + z_min; % z coordinate of next waypoint   
+            waypoints(2*i+1,:) = table(point_time, x_coord, z_coord); % Next point
+        end
+        i = i+1;
+        waypoints(2*i,  :) = table(point_time+interval_max, x_coord, z_coord); % Add time to reach final point
+
+    case 'random x'
+        x_coord = 0;
+        z_coord = 0; % constant z
+        waypoints(1,:) = table(0, x_coord, z_coord); % Initial point
+
+        x_min        = -2;     x_max         = 2; % (m) minimum and maximum coordinates for waypoints
+        interval_min = 10;       interval_max = 25;  % (s) minimum and maximum TIME interval between commands
+
+        point_time = 0;
+        rng(0); % Initialise random number generator for repeatability
+        for i = 1:num_waypoints
+            point_time_interval = (interval_max - interval_min).*rand() + interval_min; % (s) random time interval between commands
+            point_time = point_time + point_time_interval;
+
+            waypoints(2*i,  :) = table(point_time, x_coord, z_coord); % Previous point    
+            x_coord    = (x_max - x_min).*rand() + x_min; % x coordinate of next waypoint
+            waypoints(2*i+1,:) = table(point_time, x_coord, z_coord); % Next point
+        end
+        i = i+1;
+        waypoints(2*i,  :) = table(point_time+interval_max, x_coord, z_coord); % Add time to reach final point
+        
+    case 'regular x'
+        point_time_interval = 30; % (s) interval between commands
+        step_size = 1;
+        x_coord = step_size;
+        z_coord = 0;
+        point_time = 0;
+        waypoints(1,:) = table(0, x_coord, z_coord); % Initial point
+        for i = 1:num_waypoints
+        
+            point_time = point_time + point_time_interval;
+        
+            waypoints(2*i,  :) = table(point_time, x_coord, z_coord); % Previous point    
+            x_coord    = x_coord + step_size; % x coordinate of next waypoint
+            z_coord    = 0; % z coordinate of next waypoint   
+            waypoints(2*i+1,:) = table(point_time, x_coord, z_coord); % Next point
+        end
+        waypoints(end,:) = table(200, x_coord, z_coord); % Final point
+        
+     otherwise
+        error("Unknown waypoint option")
 end
-waypoints(end,:) = table(200, x_coord, z_coord); % Final point
 
 waypoints_ts = timeseries([waypoints.x_coord, waypoints.z_coord], waypoints.point_time); % timeseries object for From Workspace block
 % plot(waypoints_ts.Time, waypoints_ts.Data)

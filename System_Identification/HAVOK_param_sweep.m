@@ -8,8 +8,8 @@ clear all;
 total_timer = tic; % Start timer for this script
 
 % Search space
-q_min = 10; % Min value of q in grid search
-q_max = 150; % Max value of q in grid search
+q_min = 3; % Min value of q in grid search
+q_max = 20; % Max value of q in grid search
 q_increment = 2; % Increment value of q in grid search
 
 p_min = 3; % Min value of p in grid search
@@ -20,10 +20,10 @@ q_search = q_min:q_increment:q_max; % List of q parameters to search in
 % p_search defined before p for loop
 
 % Extract data
-simulation_data_file = 'With_payload_data_5';
+simulation_data_file = 'With_payload_data_7';
 load(['Data/', simulation_data_file, '.mat']) % Load simulation data
 
-Ts = 0.03;     % Desired sample time
+Ts = 0.025;     % Desired sample time
 y_rows = 1:4;
 
 % Adjust for constant disturbance / mean control values
@@ -32,7 +32,7 @@ u_bar = mean(out.u.Data,1); % Input needed to keep at a fixed point
 out.u.Data  = out.u.Data - u_bar; % Adjust for unmeasured input
 
 % Training data
-train_time = 10:Ts:50;
+train_time = 0:Ts:100;
 x_train = resample(out.x, train_time );% Resample time series to desired sample time and training period  
 u_train = resample(out.u, train_time );  
 t_train = x_train.Time';
@@ -43,7 +43,7 @@ y_train = x_train(y_rows,:);
 u_train = u_train.Data';
 
 % Testing data
-test_time = train_time + 30;
+test_time = 58:Ts:80;
 x_test = resample(out.x, train_time );  
 u_test = resample(out.u, train_time );  
 t_test = x_test.Time';
@@ -187,6 +187,7 @@ total_time = toc(total_timer); % Display total time taken
 plot_results = 1;
 if plot_results
     semilogy(results.q, results.MAE_mean, '.')
+    ylim([1e-3, 1e0])
 end
 
 function A = stabilise(A_unstable,max_iterations)

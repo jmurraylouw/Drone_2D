@@ -2,10 +2,10 @@
 % close all;
 
 % Extract data
-simulation_data_file = 'With_payload_data_5';
+simulation_data_file = 'With_payload_data_7';
 load(['Data/', simulation_data_file, '.mat']) % Load simulation data
 
-Ts = 0.03;     % Desired sample time
+Ts = 0.025;     % Desired sample time
 y_rows = 1:4;
 
 % Adjust for constant disturbance / mean control values
@@ -14,7 +14,7 @@ u_bar = mean(out.u.Data,1); % Input needed to keep at a fixed point
 out.u.Data  = out.u.Data - u_bar; % Adjust for unmeasured input
 
 % Training data
-train_time = 10:Ts:50;
+train_time = 0:Ts:100;
 x_train = resample(out.x, train_time );% Resample time series to desired sample time and training period  
 u_train = resample(out.u, train_time );  
 t_train = x_train.Time';
@@ -25,7 +25,7 @@ y_train = x_train(y_rows,:);
 u_train = u_train.Data';
 
 % Testing data
-test_time = train_time +50;
+test_time = 120:Ts:140;
 x_test = resample(out.x, test_time );  
 u_test = resample(out.u, test_time );  
 t_test = x_test.Time';
@@ -60,18 +60,18 @@ try
     q = double(best_results.q);
     p = double(best_results.p);
     
+    only_q = 0; % Try best result for specific q
+    if only_q
+        q = 11;
+        q_rows = find(results.q == q);
+        q_results = results(q_rows,:);
+        best_row = find(q_results.MAE_mean == min(q_results.MAE_mean));
+        best_results = q_results(best_row,:)
+        p = double(best_results.p);
+    end
+    
 catch
     disp('No saved results file')  
-end
-
-only_q = 1; % Try best result for specific q
-if only_q
-    q = 50;
-    q_rows = find(results.q == q);
-    q_results = results(q_rows,:);
-    best_row = find(q_results.MAE_mean == min(q_results.MAE_mean));
-    best_results = q_results(best_row,:)
-    p = double(best_results.p);
 end
 
 % % Override parameters:

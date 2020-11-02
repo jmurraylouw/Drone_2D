@@ -33,18 +33,19 @@ for k = 1:N % every timestep k
     if mod(k,1/Ts_mpc) == 0 %&& (k*Ts_mpc > 26)
         for state = y_rows
             subplot(length(y_rows)+1, 1, state)
+            ylabel(state)
             plot(info.Topt + t(k), info.Yopt(:,state));
             ylim([-15, 10])
             hold on;
-            plot(info.Topt + t(k), ref_data(state,(0:ph)+k)')
-            plot(info.Topt + t(k), mo_data(state,(0:ph)+k)', ':', 'LineWidth', 2)
+%             plot(info.Topt + t(k), ref_data(state,(0:ph)+k)')
+%             plot(info.Topt + t(k), mo_data(state,(0:ph)+k)', ':', 'LineWidth', 2)
             hold off;
         end
         
         subplot(length(y_rows)+1,1,length(y_rows)+1)
         plot(info.Topt + t(k), info.Uopt)
         hold on;
-        plot(info.Topt + t(k), mv_data(:,(0:ph)+k)', ':', 'LineWidth', 2) % Actual input given
+%         plot(info.Topt + t(k), mv_data(:,(0:ph)+k)', ':', 'LineWidth', 2) % Actual input given
         hold off;
         pause
     end
