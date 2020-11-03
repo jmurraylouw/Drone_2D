@@ -2,19 +2,19 @@
 % close all;
 
 % Extract data
-simulation_data_file = 'With_payload_data_7';
+simulation_data_file = 'With_payload_data_9';
 load(['Data/', simulation_data_file, '.mat']) % Load simulation data
 
-Ts = 0.025;     % Desired sample time
+Ts = 0.03;     % Desired sample time
 y_rows = 1:4;
 
 % Adjust for constant disturbance / mean control values
-u_bar = mean(out.u.Data,1); % Input needed to keep at a fixed point
-% u_bar = [0, -(2+4.5)*9.81]
+% u_bar = mean(out.u.Data,1); % Input needed to keep at a fixed point
+u_bar = [0, -(1.5 + 4.5)*9.81]
 out.u.Data  = out.u.Data - u_bar; % Adjust for unmeasured input
 
 % Training data
-train_time = 0:Ts:100;
+train_time = 0:Ts:150;
 x_train = resample(out.x, train_time );% Resample time series to desired sample time and training period  
 u_train = resample(out.u, train_time );  
 t_train = x_train.Time';
@@ -25,7 +25,7 @@ y_train = x_train(y_rows,:);
 u_train = u_train.Data';
 
 % Testing data
-test_time = 120:Ts:140;
+test_time = 120:Ts:200;
 x_test = resample(out.x, test_time );  
 u_test = resample(out.u, test_time );  
 t_test = x_test.Time';
@@ -62,7 +62,7 @@ try
     
     only_q = 1; % Try best result for specific q
     if only_q
-        q = 11;
+        q = 5;
         q_rows = find(results.q == q);
         q_results = results(q_rows,:);
         best_row = find(q_results.MAE_mean == min(q_results.MAE_mean));
@@ -119,6 +119,10 @@ AB_havok = (U_tilde*S_tilde)*AB_tilde*pinv(U_tilde*S_tilde);
 A_havok = AB_havok(1:q*ny, 1:q*ny);
 B_havok = AB_havok(1:q*ny, q*ny+1:end);
 % A_havok = stabilise(A_havok,10);
+
+% Make matrix sparse
+A_havok(ny+1:end, :) = [eye((q-1)*ny), zeros((q-1)*ny, ny)]; % Add Identity matrix to carry delays over to x(k+1)
+B_havok(ny+1:end, :) = zeros((q-1)*ny, nu); % Input has no effect on delays
 
 % DMD of Y
 Y2 = Y(:, 2:end  );
