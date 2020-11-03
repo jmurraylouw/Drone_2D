@@ -8,8 +8,8 @@ clear all;
 total_timer = tic; % Start timer for this script
 
 % Search space
-q_min = 80; % Min value of q in grid search
-q_max = 84; % Max value of q in grid search
+q_min = 3; % Min value of q in grid search
+q_max = 50; % Max value of q in grid search
 q_increment = 2; % Increment value of q in grid search
 
 p_min = 3; % Min value of p in grid search
@@ -27,8 +27,8 @@ Ts = 0.03;     % Desired sample time
 y_rows = 1:4;
 
 % Adjust for constant disturbance / mean control values
-u_bar = mean(out.u.Data,1); % Input needed to keep at a fixed point
-% u_bar = [0, -(2+4.5)*9.81]
+% u_bar = mean(out.u.Data,1); % Input needed to keep at a fixed point
+u_bar = [0, -(1.5 + 4.5)*9.81]
 out.u.Data  = out.u.Data - u_bar; % Adjust for unmeasured input
 
 % Training data

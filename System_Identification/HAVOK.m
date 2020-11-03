@@ -14,7 +14,7 @@ u_bar = [0, -(1.5 + 4.5)*9.81]
 out.u.Data  = out.u.Data - u_bar; % Adjust for unmeasured input
 
 % Training data
-train_time = 0:Ts:150;
+train_time = 0:Ts:100;
 x_train = resample(out.x, train_time );% Resample time series to desired sample time and training period  
 u_train = resample(out.u, train_time );  
 t_train = x_train.Time';
@@ -25,7 +25,7 @@ y_train = x_train(y_rows,:);
 u_train = u_train.Data';
 
 % Testing data
-test_time = 120:Ts:200;
+test_time = 140:Ts:200;
 x_test = resample(out.x, test_time );  
 u_test = resample(out.u, test_time );  
 t_test = x_test.Time';
@@ -62,7 +62,7 @@ try
     
     only_q = 1; % Try best result for specific q
     if only_q
-        q = 5;
+        q = 3;
         q_rows = find(results.q == q);
         q_results = results(q_rows,:);
         best_row = find(q_results.MAE_mean == min(q_results.MAE_mean));
