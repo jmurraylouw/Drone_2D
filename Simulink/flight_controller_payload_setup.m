@@ -147,7 +147,7 @@ t_p = 12; % For guidance, minimum desired settling time (s)
 t_c = 10; % desired control settling time
 mpc_drone_2d.PredictionHorizon  = floor(t_p/Ts_mpc); %t_s/Ts_mpc; % Prediction horizon (samples), initial guess according to MATLAB: Choose Sample Time and Horizons
 mpc_drone_2d.ControlHorizon     = floor(t_c/Ts_mpc); % Control horizon (samples)
-mpc_drone_2d.Weights.OutputVariables        = [1, 1, 0, 5, zeros(1, (q-1)*ny)]*tuning_weight;
+mpc_drone_2d.Weights.OutputVariables        = [1, 1, 0, 10, zeros(1, (q-1)*ny)]*tuning_weight;
 mpc_drone_2d.Weights.ManipulatedVariables   = 5e-1*[1, 1]*tuning_weight; % Weights of delay coordinates to 0
 mpc_drone_2d.Weights.ManipulatedVariablesRate     = 1e-2*[1, 1]/tuning_weight;
 
@@ -189,7 +189,7 @@ num_waypoints = 100; % Number of waypoints included in command
 waypoints = table('Size', [(num_waypoints+1)*2, 3], 'VariableTypes', ["double", "double", "double"]);
 waypoints.Properties.VariableNames = {'point_time', 'x_coord', 'z_coord'};
 
-waypoint_opt = 'random xz'; % waypoint option
+waypoint_opt = 'regular x'; % waypoint option
 switch waypoint_opt
     case 'random xz'
         x_coord = 0;
@@ -253,7 +253,7 @@ switch waypoint_opt
         waypoints(2*i,  :) = table(point_time+interval_max, x_coord, z_coord); % Add time to reach final point
         
     case 'regular x'
-        time_interval = 30; % (s) interval between commands
+        time_interval = 10; % (s) interval between commands
         step_size = 1;
         x_coord = step_size;
         z_coord = 0;
