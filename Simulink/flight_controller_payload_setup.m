@@ -275,4 +275,4 @@ switch waypoint_opt
 end
 
 waypoints_ts = timeseries([waypoints.x_coord, waypoints.z_coord], waypoints.point_time); % timeseries object for From Workspace block
-plot(waypoints_ts.Time, waypoints_ts.Data)
+% plot(waypoints_ts.Time, waypoints_ts.Data)
