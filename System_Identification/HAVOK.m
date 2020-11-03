@@ -2,7 +2,7 @@
 % close all;
 
 % Extract data
-simulation_data_file = 'With_payload_data_9';
+simulation_data_file = 'With_payload_data_10';
 load(['Data/', simulation_data_file, '.mat']) % Load simulation data
 
 Ts = 0.03;     % Desired sample time
@@ -10,11 +10,11 @@ y_rows = 1:4;
 
 % Adjust for constant disturbance / mean control values
 % u_bar = mean(out.u.Data,1); % Input needed to keep at a fixed point
-u_bar = [0, -(1.5 + 4.5)*9.81]
+u_bar = [0, (m + M)*g];
 out.u.Data  = out.u.Data - u_bar; % Adjust for unmeasured input
 
 % Training data
-train_time = 0:Ts:100;
+train_time = 0:Ts:200;
 x_train = resample(out.x, train_time );% Resample time series to desired sample time and training period  
 u_train = resample(out.u, train_time );  
 t_train = x_train.Time';
@@ -25,7 +25,7 @@ y_train = x_train(y_rows,:);
 u_train = u_train.Data';
 
 % Testing data
-test_time = 140:Ts:200;
+test_time = 200:Ts:300;
 x_test = resample(out.x, test_time );  
 u_test = resample(out.u, test_time );  
 t_test = x_test.Time';
@@ -43,7 +43,7 @@ nu = size(u_train,1); % number of inputs
 % % Add noise
 % rng('default');
 % rng(1); % Repeatable random numbers
-% % sigma = 0.001; % Noise standard deviation
+sigma = 0; % Noise standard deviation
 % y_data_noise = y_data + sigma*randn(size(y_data));
 
 % Read previous results

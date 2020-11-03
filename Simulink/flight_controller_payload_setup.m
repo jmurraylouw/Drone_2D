@@ -46,7 +46,7 @@ C_Dz  = 0.2; % Damping coef. of drone in z direction
 rho   = 1.225; % Air density (kg/m^3)
 tau   = 0.07; % Motor time constant
 
-m     = 1.5; % Mass of swinging payload (kg)
+m     = 2; % Mass of swinging payload (kg)
 l     = 1; % Length of pendulum (m)
 cbeta = 0.4; % Rotational damping coef of payload at connection
 
@@ -101,7 +101,7 @@ switch model
         B_mpc = [[B_dmd(:, end-nu+1:end); zeros((q-1)*ny, nu)], B_ud];
     
     case 'havok'
-        load('Data/havoc_model_3.mat')
+%         load('Data/havoc_model_3.mat')
         A_mpc = A_havok;
         B_ud = dist_influence*[eye(CO); zeros(q*ny - CO, CO)]; % B of unmeasured disturbance, for distrubance force in x and z
         B_mpc = [B_havok, B_ud];
@@ -184,32 +184,47 @@ Y_nom = zeros(q*ny,1);
 DX_nom = zeros(q*ny,1);
 
 % Way points
-waypoint_opt = 'random x'; % waypoint option
 num_waypoints = 100; % Number of waypoints included in command
 
 waypoints = table('Size', [(num_waypoints+1)*2, 3], 'VariableTypes', ["double", "double", "double"]);
 waypoints.Properties.VariableNames = {'point_time', 'x_coord', 'z_coord'};
 
+waypoint_opt = 'random x'; % waypoint option
 switch waypoint_opt
     case 'random xz'
         x_coord = 0;
-        z_coord = -5;
+        z_coord = 0;
         waypoints(1,:) = table(0,                   x_coord, z_coord); % Initial point
 
-        x_min        = -2;     x_max         = 2; % (m) minimum and maximum coordinates for waypoints
-        z_min        = -4;     z_max        = 0;
+        x_min   = 0.5;     x_max   = 1.5; % (m) minimum and maximum step size for waypoints
+        z_min   = 0.5;     z_max   = 1.5;
         interval_min = 4;       interval_max = 10;  % (s) minimum and maximum TIME interval between commands
 
-        point_time = point_time_interval;
         rng(0); % Initialise random number generator for repeatability
+        point_time = 0; % Currently at time zero
+        next_point = 1; % Index of next point
         for i = 1:num_waypoints
-            point_time_interval = (interval_max - interval_min).*rand() + interval_min; % (s) random time interval between commands
-            point_time = point_time + point_time_interval;
+            % Step x only
+            time_interval = (interval_max - interval_min).*rand() + interval_min; % (s) random time interval between commands
+            point_time = point_time + time_interval;
 
-            waypoints(2*i,  :) = table(point_time, x_coord, z_coord); % Previous point    
-            x_coord    = (x_max - x_min).*rand() + x_min; % x coordinate of next waypoint
-            z_coord    = (z_max - z_min).*rand() + z_min; % z coordinate of next waypoint   
-            waypoints(2*i+1,:) = table(point_time, x_coord, z_coord); % Next point
+            waypoints(next_point,  :) = table(point_time, x_coord, z_coord); % Previous point    
+            next_point = next_point + 1;
+            x_step = ((x_max - x_min).*rand() + x_min)*sign(randn()); % x step of next waypoint (size)*(direction)
+            x_coord = x_coord + x_step;
+            waypoints(next_point,:) = table(point_time, x_coord, z_coord); % Next point
+            next_point = next_point + 1; 
+            
+            % Step z only
+            time_interval = (interval_max - interval_min).*rand() + interval_min; % (s) random time interval between commands
+            point_time = point_time + time_interval;
+
+            waypoints(next_point,  :) = table(point_time, x_coord, z_coord); % Previous point    
+            next_point = next_point + 1;
+            z_step = ((z_max - z_min).*rand() + z_min)*sign(randn()); % z step of next waypoint (size)*(direction)
+            z_coord = z_coord + z_step;
+            waypoints(next_point,:) = table(point_time, x_coord, z_coord); % Next point
+            next_point = next_point + 1;            
         end
         i = i+1;
         waypoints(2*i,  :) = table(point_time+interval_max, x_coord, z_coord); % Add time to reach final point
@@ -220,13 +235,13 @@ switch waypoint_opt
         waypoints(1,:) = table(0, x_coord, z_coord); % Initial point
 
         x_min        = -2;     x_max         = 2; % (m) minimum and maximum coordinates for waypoints
-        interval_min = 10;       interval_max = 25;  % (s) minimum and maximum TIME interval between commands
+        interval_min = 10;     interval_max = 25;  % (s) minimum and maximum TIME interval between commands
 
         point_time = 0;
         rng(0); % Initialise random number generator for repeatability
         for i = 1:num_waypoints
-            point_time_interval = (interval_max - interval_min).*rand() + interval_min; % (s) random time interval between commands
-            point_time = point_time + point_time_interval;
+            time_interval = (interval_max - interval_min).*rand() + interval_min; % (s) random time interval between commands
+            point_time = point_time + time_interval;
             if i == 1 % set first interval
                 point_time = 5;
             end
@@ -238,7 +253,7 @@ switch waypoint_opt
         waypoints(2*i,  :) = table(point_time+interval_max, x_coord, z_coord); % Add time to reach final point
         
     case 'regular x'
-        point_time_interval = 30; % (s) interval between commands
+        time_interval = 30; % (s) interval between commands
         step_size = 1;
         x_coord = step_size;
         z_coord = 0;
@@ -246,7 +261,7 @@ switch waypoint_opt
         waypoints(1,:) = table(0, x_coord, z_coord); % Initial point
         for i = 1:num_waypoints
         
-            point_time = point_time + point_time_interval;
+            point_time = point_time + time_interval;
         
             waypoints(2*i,  :) = table(point_time, x_coord, z_coord); % Previous point    
             x_coord    = x_coord + step_size; % x coordinate of next waypoint
@@ -260,4 +275,4 @@ switch waypoint_opt
 end
 
 waypoints_ts = timeseries([waypoints.x_coord, waypoints.z_coord], waypoints.point_time); % timeseries object for From Workspace block
-% plot(waypoints_ts.Time, waypoints_ts.Data)
+plot(waypoints_ts.Time, waypoints_ts.Data)
