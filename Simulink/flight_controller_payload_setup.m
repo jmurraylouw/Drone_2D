@@ -48,7 +48,7 @@ tau   = 0.07; % Motor time constant
 
 m     = 2; % Mass of swinging payload (kg)
 l     = 1; % Length of pendulum (m)
-cbeta = 0.4; % Rotational damping coef of payload at connection
+cbeta = 0.05; % Rotational damping coef of payload at connection
 
 C_px = 0.1; % Damping coef. of drone through air in x direction
 C_pz = 0.1; % Damping coef. of drone through air in z direction
@@ -189,7 +189,7 @@ num_waypoints = 100; % Number of waypoints included in command
 waypoints = table('Size', [(num_waypoints+1)*2, 3], 'VariableTypes', ["double", "double", "double"]);
 waypoints.Properties.VariableNames = {'point_time', 'x_coord', 'z_coord'};
 
-waypoint_opt = 'regular x'; % waypoint option
+waypoint_opt = 'random xz'; % waypoint option
 switch waypoint_opt
     case 'random xz'
         x_coord = 0;
@@ -198,7 +198,7 @@ switch waypoint_opt
 
         x_min   = 0.5;     x_max   = 1.5; % (m) minimum and maximum step size for waypoints
         z_min   = 0.5;     z_max   = 1.5;
-        interval_min = 4;       interval_max = 10;  % (s) minimum and maximum TIME interval between commands
+        interval_min = 5;       interval_max = 20;  % (s) minimum and maximum TIME interval between commands
 
         rng(0); % Initialise random number generator for repeatability
         point_time = 0; % Currently at time zero
