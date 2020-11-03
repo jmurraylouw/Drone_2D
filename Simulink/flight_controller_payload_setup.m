@@ -101,7 +101,7 @@ switch model
         B_mpc = [[B_dmd(:, end-nu+1:end); zeros((q-1)*ny, nu)], B_ud];
     
     case 'havok'
-        load('Data/havoc_model_1.mat')
+        load('Data/havoc_model_2.mat')
         A_mpc = A_havok;
         B_ud = dist_influence*[eye(CO); zeros(q*ny - CO, CO)]; % B of unmeasured disturbance, for distrubance force in x and z
         B_mpc = [B_havok, B_ud];
@@ -143,14 +143,13 @@ covariance = zeros(size(x_mpc.Covariance));
 covariance(y_rows, y_rows) = diag([2e-3, 1e-3, 1e-5, 1e-4]);
 x_mpc = mpcstate(mpc_drone_2d, [], [], [], [], covariance);
 
-t_p = 6; % For guidance, minimum desired settling time (s)
-t_c = 5; % desired control settling time
+t_p = 12; % For guidance, minimum desired settling time (s)
+t_c = 10; % desired control settling time
 mpc_drone_2d.PredictionHorizon  = floor(t_p/Ts_mpc); %t_s/Ts_mpc; % Prediction horizon (samples), initial guess according to MATLAB: Choose Sample Time and Horizons
 mpc_drone_2d.ControlHorizon     = floor(t_c/Ts_mpc); % Control horizon (samples)
-
-mpc_drone_2d.Weights.OutputVariables        = [1, 1, 0, 0, zeros(1, (q-1)*ny)]*tuning_weight;
-mpc_drone_2d.Weights.ManipulatedVariables   = 1e-3*[1, 1]*tuning_weight; % Weights of delay coordinates to 0
-mpc_drone_2d.Weights.ManipulatedVariablesRate     = 1e-1*[5, 1]/tuning_weight;
+mpc_drone_2d.Weights.OutputVariables        = [1, 1, 0, 5, zeros(1, (q-1)*ny)]*tuning_weight;
+mpc_drone_2d.Weights.ManipulatedVariables   = 5e-1*[1, 1]*tuning_weight; % Weights of delay coordinates to 0
+mpc_drone_2d.Weights.ManipulatedVariablesRate     = 1e-2*[1, 1]/tuning_weight;
 
 % Output bounds
 theta_min = -30*(pi/180);
@@ -228,7 +227,9 @@ switch waypoint_opt
         for i = 1:num_waypoints
             point_time_interval = (interval_max - interval_min).*rand() + interval_min; % (s) random time interval between commands
             point_time = point_time + point_time_interval;
-
+            if i == 1 % set first interval
+                point_time = 5;
+            end
             waypoints(2*i,  :) = table(point_time, x_coord, z_coord); % Previous point    
             x_coord    = (x_max - x_min).*rand() + x_min; % x coordinate of next waypoint
             waypoints(2*i+1,:) = table(point_time, x_coord, z_coord); % Next point

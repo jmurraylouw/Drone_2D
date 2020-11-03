@@ -60,7 +60,7 @@ try
     q = double(best_results.q);
     p = double(best_results.p);
     
-    only_q = 0; % Try best result for specific q
+    only_q = 1; % Try best result for specific q
     if only_q
         q = 11;
         q_rows = find(results.q == q);
