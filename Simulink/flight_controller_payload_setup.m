@@ -189,7 +189,7 @@ num_waypoints = 100; % Number of waypoints included in command
 waypoints = table('Size', [(num_waypoints+1)*2, 3], 'VariableTypes', ["double", "double", "double"]);
 waypoints.Properties.VariableNames = {'point_time', 'x_coord', 'z_coord'};
 
-waypoint_opt = 'random x'; % waypoint option
+waypoint_opt = 'random xz'; % waypoint option
 switch waypoint_opt
     case 'random xz'
         x_coord = 0;
