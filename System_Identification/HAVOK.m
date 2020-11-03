@@ -2,7 +2,7 @@
 % close all;
 
 % Extract data
-simulation_data_file = 'With_payload_data_10';
+simulation_data_file = 'With_payload_data_11';
 load(['Data/', simulation_data_file, '.mat']) % Load simulation data
 
 Ts = 0.03;     % Desired sample time
