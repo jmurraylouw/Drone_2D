@@ -54,8 +54,8 @@ m     = 2; % Mass of swinging payload (kg)
 l     = 1; % Length of pendulum (m)
 cbeta = 0.05; % Rotational damping coef of payload at connection
 
-C_px = 0.1; % Damping coef. of drone through air in x direction
-C_pz = 0.1; % Damping coef. of drone through air in z direction
+C_px = 0.05; % Damping coef. of drone through air in x direction
+C_pz = 0.05; % Damping coef. of drone through air in z direction
 
 % Mixing Matrix
 MM = [-1, 1;
