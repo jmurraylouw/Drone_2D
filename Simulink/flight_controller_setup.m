@@ -1,5 +1,8 @@
 %% PID controllers
-load('Data/Drone_2D_control_params.mat'); % Load controller gain values
+% PID controllers
+% _2 is most like Anton.
+% _4 is most damped
+load('Data/Drone_2D_control_params_2.mat'); % Load controller gain values
 
 dx_sp_max = 12; % (m/s) Max x velocity command (x and z)
 dx_sp_min = -12; % (m/s) Min x velocity command (x and z)
