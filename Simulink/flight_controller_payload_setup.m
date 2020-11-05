@@ -70,7 +70,7 @@ lambda = 0.985; % Exponential forgetting factor of moving average to smooth out 
 % model_intervals = 10; 
 
 % Sample time of MPC:
-Ts_mpc = 0.03;
+Ts_mpc = Ts_havok;
 
 % Excitement signal
 Ts_excite = 0; % Sample time
@@ -147,8 +147,8 @@ covariance = zeros(size(x_mpc.Covariance));
 covariance(y_rows, y_rows) = diag([2e-3, 1e-3, 1e-5, 1e-4]);
 x_mpc = mpcstate(mpc_drone_2d, [], [], [], [], covariance);
 
-t_p = 12; % For guidance, minimum desired settling time (s)
-t_c = 10; % desired control settling time
+t_p = 9; % For guidance, minimum desired settling time (s)
+t_c = 8; % desired control settling time
 mpc_drone_2d.PredictionHorizon  = floor(t_p/Ts_mpc); %t_s/Ts_mpc; % Prediction horizon (samples), initial guess according to MATLAB: Choose Sample Time and Horizons
 mpc_drone_2d.ControlHorizon     = floor(t_c/Ts_mpc); % Control horizon (samples)
 mpc_drone_2d.Weights.OutputVariables        = [1, 1, 0, 10, zeros(1, (q-1)*ny)]*tuning_weight;
@@ -279,4 +279,4 @@ switch waypoint_opt
 end
 
 waypoints_ts = timeseries([waypoints.x_coord, waypoints.z_coord], waypoints.point_time); % timeseries object for From Workspace block
-plot(waypoints_ts.Time, waypoints_ts.Data)
+% plot(waypoints_ts.Time, waypoints_ts.Data)

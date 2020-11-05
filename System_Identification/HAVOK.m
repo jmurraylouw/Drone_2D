@@ -6,6 +6,7 @@ simulation_data_file = 'With_payload_data_11';
 load(['Data/', simulation_data_file, '.mat']) % Load simulation data
 
 Ts = 0.03;     % Desired sample time
+Ts_havok = Ts;
 y_rows = 1:4;
 
 % Adjust for constant disturbance / mean control values
@@ -60,11 +61,10 @@ try
     q = double(best_results.q);
     p = double(best_results.p);
     
-    only_q = 1; % Try best result for specific q
-    if only_q
+    only_q_Ts = 1; % Try best result for specific q
+    if only_q_Ts
         q = 3;
-        q_rows = find(results.q == q);
-        q_results = results(q_rows,:);
+        q_results = results((results.q == q & results.Ts == Ts),:);
         best_row = find(q_results.MAE_mean == min(q_results.MAE_mean));
         best_results = q_results(best_row,:)
         p = double(best_results.p);
