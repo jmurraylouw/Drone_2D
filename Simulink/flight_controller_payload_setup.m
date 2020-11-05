@@ -147,8 +147,8 @@ covariance = zeros(size(x_mpc.Covariance));
 covariance(y_rows, y_rows) = diag([2e-3, 1e-3, 1e-5, 1e-4]);
 x_mpc = mpcstate(mpc_drone_2d, [], [], [], [], covariance);
 
-t_p = 9; % For guidance, minimum desired settling time (s)
-t_c = 8; % desired control settling time
+t_p = 6; % For guidance, minimum desired settling time (s)
+t_c = 3; % desired control settling time
 mpc_drone_2d.PredictionHorizon  = floor(t_p/Ts_mpc); %t_s/Ts_mpc; % Prediction horizon (samples), initial guess according to MATLAB: Choose Sample Time and Horizons
 mpc_drone_2d.ControlHorizon     = floor(t_c/Ts_mpc); % Control horizon (samples)
 mpc_drone_2d.Weights.OutputVariables        = [1, 1, 0, 10, zeros(1, (q-1)*ny)]*tuning_weight;
