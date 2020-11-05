@@ -38,6 +38,7 @@ u0 = [0; 0]; % Initial input
 
 x0_no_load = zeros(6,1); % Initial state
 y0_no_load = zeros(3,1); % Initial measurements
+Ts_csv = 0.1; % Sample time of To Worspace blocks for csv data
 
 % Model parameters
 M     = 4.5; % Mass of drone body (at fulcrum)
