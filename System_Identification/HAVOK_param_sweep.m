@@ -8,7 +8,7 @@ total_timer = tic; % Start timer for this script
 
 % Search space
 q_min = 2; % Min value of q in grid search
-q_max = 20; % Max value of q in grid search
+q_max = 10; % Max value of q in grid search
 q_increment = 1; % Increment value of q in grid search
 
 p_min = 2; % Min value of p in grid search
@@ -22,7 +22,7 @@ q_search = q_min:q_increment:q_max; % List of q parameters to search in
 simulation_data_file = 'With_payload_data_11';
 load(['Data/', simulation_data_file, '.mat']) % Load simulation data
 
-Ts = 0.03;     % Desired sample time
+Ts = 0.05;     % Desired sample time
 y_rows = 1:4;
 
 % Adjust for constant disturbance / mean control values
@@ -64,8 +64,8 @@ nu = size(u_train,1); % number of inputs
 % y_data_noise = y_data + sigma*randn(size(y_data));
 
 % Create empty results table
-VariableTypes = {'int16','int16','double'}; % id, q, p, MAE
-VariableNames = {'q', 'p', 'MAE_mean'};
+VariableTypes = {'double', 'int16',   'int16', 'int16', 'double'}; % id, q, p, MAE
+VariableNames = {'Ts',     'N_train', 'q',     'p',     'MAE_mean'};
 for i = 1:ny % Mae column for each measured state
     VariableNames = [VariableNames, strcat('MAE_', num2str(i))];
     VariableTypes = [VariableTypes, 'double'];
@@ -101,7 +101,7 @@ for q = q_search
         for p = p_search
             p_is_new = 1; % 1 = first time using this p this session
             
-            if ~isempty(find(results.q == q & results.p == p, 1)) 
+            if ~isempty(find(results.q == q & results.p == p & results.Ts == Ts & results.N_train == N_train, 1)) 
                 continue % continue to next p if this combo has been searched before
             end
             
@@ -167,7 +167,7 @@ for q = q_search
             MAE = sum(abs(y_hat - y_test), 2)./N_test; % For each measured state
         
             % Save results
-            results(emptry_row,:) = [{q, p, mean(MAE)}, num2cell(MAE')]; % add to table of results
+            results(emptry_row,:) = [{Ts, N_train, q, p, mean(MAE)}, num2cell(MAE')]; % add to table of results
             emptry_row = emptry_row + 1; 
             
         end % p
@@ -181,15 +181,18 @@ format short % back to default/short display
 results(~results.q,:) = []; % remove empty rows
 save(results_file, 'results', 'emptry_row')
 
-best_row = find(results.MAE_mean == min(results.MAE_mean));
-best_results = results(best_row,:)
+best_results_overall = results((results.MAE_mean == min(results.MAE_mean)),:)
+
+%% Only for this Ts:
+results_Ts = results((results.Ts == Ts),:);
+best_results_Ts = results_Ts((results_Ts.MAE_mean == min(results_Ts.MAE_mean)),:)
 
 total_time = toc(total_timer); % Display total time taken
 
-%% Plot spread of results
+%% Plot spread of results for this Ts
 plot_results = 1;
 if plot_results
-    semilogy(results.q, results.MAE_mean, '.')
+    semilogy(results_Ts.q, results_Ts.MAE_mean, '.')
     ylim([1e-3, 1e0])
 end
 

@@ -202,7 +202,7 @@ switch waypoint_opt
 
         x_min   = 0.5;     x_max   = 1.5; % (m) minimum and maximum step size for waypoints
         z_min   = 0.5;     z_max   = 1.5;
-        interval_min = 5;       interval_max = 20;  % (s) minimum and maximum TIME interval between commands
+        interval_min = 4;       interval_max = 10;  % (s) minimum and maximum TIME interval between commands
 
         rng(0); % Initialise random number generator for repeatability
         point_time = 0; % Currently at time zero
@@ -279,4 +279,4 @@ switch waypoint_opt
 end
 
 waypoints_ts = timeseries([waypoints.x_coord, waypoints.z_coord], waypoints.point_time); % timeseries object for From Workspace block
-% plot(waypoints_ts.Time, waypoints_ts.Data)
+plot(waypoints_ts.Time, waypoints_ts.Data)
