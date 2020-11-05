@@ -36,6 +36,9 @@ x0 = zeros(nx,1); % Initial state
 y0 = zeros(ny,1); % Initial measurements
 u0 = [0; 0]; % Initial input
 
+x0_no_load = zeros(6,1); % Initial state
+y0_no_load = zeros(3,1); % Initial measurements
+
 % Model parameters
 M     = 4.5; % Mass of drone body (at fulcrum)
 I_yy  = 0.235; % Moment of inertia of drone body about body x axis
