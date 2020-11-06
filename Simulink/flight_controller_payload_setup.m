@@ -34,7 +34,7 @@ nu = 2; % Number of inputs
 % Initial conditions
 x0 = zeros(nx,1); % Initial state
 y0 = zeros(ny,1); % Initial measurements
-u0 = [0; 0]; % Initial input
+u0 = -0.5*M*g*[1; 1]; % Initial input
 
 x0_no_load = zeros(6,1); % Initial state
 y0_no_load = zeros(3,1); % Initial measurements
