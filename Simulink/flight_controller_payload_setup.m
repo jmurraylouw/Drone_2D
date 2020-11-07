@@ -81,7 +81,7 @@ CO = 2; % number of Controlled Outputs (x and z). theta is not controlled to a r
 dist_influence = 0; % Disturbances include uncertainty in model
 
 % Internal plant model
-model = 'dmd'; % Choose which model to use for MPC
+model = 'havok'; % Choose which model to use for MPC
 switch model
     case 'dmd'
 %         start_time = 20;
@@ -147,10 +147,10 @@ covariance = zeros(size(x_mpc.Covariance));
 covariance(y_rows, y_rows) = diag([2e-3, 1e-3, 1e-5, 1e-4]);
 x_mpc = mpcstate(mpc_drone_2d, [], [], [], [], covariance);
 
-t_p = 6; % For guidance, minimum desired settling time (s)
-t_c = 3; % desired control settling time
-mpc_drone_2d.PredictionHorizon  = floor(t_p/Ts_mpc); %t_s/Ts_mpc; % Prediction horizon (samples), initial guess according to MATLAB: Choose Sample Time and Horizons
-mpc_drone_2d.ControlHorizon     = floor(t_c/Ts_mpc); % Control horizon (samples)
+Ty = 6; % Prediction period, For guidance, minimum desired settling time (s)
+Tu = 3; % Control period, desired control settling time
+mpc_drone_2d.PredictionHorizon  = floor(Ty/Ts_mpc); %t_s/Ts_mpc; % Prediction horizon (samples), initial guess according to MATLAB: Choose Sample Time and Horizons
+mpc_drone_2d.ControlHorizon     = floor(Tu/Ts_mpc); % Control horizon (samples)
 mpc_drone_2d.Weights.OutputVariables        = [1, 1, 0, 10, zeros(1, (q-1)*ny)]*tuning_weight;
 mpc_drone_2d.Weights.ManipulatedVariables   = 5e-1*[1, 1]*tuning_weight; % Weights of delay coordinates to 0
 mpc_drone_2d.Weights.ManipulatedVariablesRate     = 1e-2*[1, 1]/tuning_weight;
@@ -193,7 +193,7 @@ num_waypoints = 100; % Number of waypoints included in command
 waypoints = table('Size', [(num_waypoints+1)*2, 3], 'VariableTypes', ["double", "double", "double"]);
 waypoints.Properties.VariableNames = {'point_time', 'x_coord', 'z_coord'};
 
-waypoint_opt = 'random xz'; % waypoint option
+waypoint_opt = 'random x'; % waypoint option
 switch waypoint_opt
     case 'random xz'
         x_coord = 0;
@@ -238,8 +238,8 @@ switch waypoint_opt
         z_coord = 0; % constant z
         waypoints(1,:) = table(0, x_coord, z_coord); % Initial point
 
-        x_min        = -2;     x_max         = 2; % (m) minimum and maximum coordinates for waypoints
-        interval_min = 10;     interval_max = 25;  % (s) minimum and maximum TIME interval between commands
+        x_min        = -5;     x_max         = 5; % (m) minimum and maximum coordinates for waypoints
+        interval_min = 2;     interval_max = 5;  % (s) minimum and maximum TIME interval between commands
 
         point_time = 0;
         rng(0); % Initialise random number generator for repeatability
@@ -257,8 +257,8 @@ switch waypoint_opt
         waypoints(2*i,  :) = table(point_time+interval_max, x_coord, z_coord); % Add time to reach final point
         
     case 'regular x'
-        time_interval = 10; % (s) interval between commands
-        step_size = 1;
+        time_interval = 4; % (s) interval between commands
+        step_size = 2;
         x_coord = step_size;
         z_coord = 0;
         point_time = 0;
