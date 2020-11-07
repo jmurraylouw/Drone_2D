@@ -34,7 +34,7 @@ nu = 2; % Number of inputs
 % Initial conditions
 x0 = zeros(nx,1); % Initial state
 y0 = zeros(ny,1); % Initial measurements
-u0 = [0; 0]; % Initial input
+u0 = -0.5*(M+m)*g*[1; 1]; % Initial input
 
 x0_no_load = zeros(6,1); % Initial state
 y0_no_load = zeros(3,1); % Initial measurements
@@ -68,9 +68,6 @@ lambda = 0.985; % Exponential forgetting factor of moving average to smooth out 
 % Ts_dmd, ny, nu, x0, u0, N_train, q, model_intervals
 % load('Data/MPC_initial_plant.mat'); % load A_dmd, B_dmd, q, Ts_dmd from a previous DMD run
 % model_intervals = 10; 
-
-% Sample time of MPC:
-Ts_mpc = Ts_havok;
 
 % Excitement signal
 Ts_excite = 0; % Sample time
@@ -113,6 +110,9 @@ switch model
     otherwise
         error("Choose only 'dmd' or 'havok' ")
 end
+
+% Sample time of MPC:
+Ts_mpc = Ts_havok;
 
 C_mpc = eye(q*ny);
 D_mpc = zeros(q*ny, nu + CO);
