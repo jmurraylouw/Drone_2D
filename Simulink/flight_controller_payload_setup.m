@@ -25,21 +25,6 @@ dtheta_sp_min = -120*pi/180; % Min. pitch rate command
 % 
 % sigma = 0.001; % Std deviation of measurement noise
 
-% Dimentions
-y_rows = 1:4;
-nx = 8; % Number of states
-ny = length(y_rows); % Number of measurements
-nu = 2; % Number of inputs
-
-% Initial conditions
-x0 = zeros(nx,1); % Initial state
-y0 = zeros(ny,1); % Initial measurements
-u0 = -0.5*(M+m)*g*[1; 1]; % Initial input
-
-x0_no_load = zeros(6,1); % Initial state
-y0_no_load = zeros(3,1); % Initial measurements
-Ts_csv = 0.1; % Sample time of To Worspace blocks for csv data
-
 % Model parameters
 M     = 4.5; % Mass of drone body (at fulcrum)
 I_yy  = 0.235; % Moment of inertia of drone body about body x axis
@@ -69,6 +54,21 @@ lambda = 0.985; % Exponential forgetting factor of moving average to smooth out 
 % load('Data/MPC_initial_plant.mat'); % load A_dmd, B_dmd, q, Ts_dmd from a previous DMD run
 % model_intervals = 10; 
 
+% Dimentions
+y_rows = 1:4;
+nx = 8; % Number of states
+ny = length(y_rows); % Number of measurements
+nu = 2; % Number of inputs
+
+% Initial conditions
+x0 = zeros(nx,1); % Initial state
+y0 = zeros(ny,1); % Initial measurements
+u0 = -0.5*(M+m)*g*[1; 1]; % Initial input
+
+x0_no_load = zeros(6,1); % Initial state
+y0_no_load = zeros(3,1); % Initial measurements
+Ts_csv = 0.1; % Sample time of To Worspace blocks for csv data
+
 % Excitement signal
 Ts_excite = 0; % Sample time
 var_excite = 0; % Variance of excitement signal (pulse train)
@@ -84,15 +84,15 @@ dist_influence = 0; % Disturbances include uncertainty in model
 model = 'havok'; % Choose which model to use for MPC
 switch model
     case 'dmd'
-        start_time = 20;
-        end_time = 100;
-        y_rows = 1:4;
-        q = 6;
-        sigma = 0;
-        plot_prediction = 0;
-
-        [A_dmd, B_dmd] = model_DMD(out, start_time, end_time, Ts_mpc, q, y_rows, sigma, plot_prediction);
-        
+%         start_time = 20;
+%         end_time = 100;
+%         y_rows = 1:4;
+%         q = 6;
+%         sigma = 0;
+%         plot_prediction = 0;
+% 
+%         [A_dmd, B_dmd] = model_DMD(out, start_time, end_time, Ts_mpc, q, y_rows, sigma, plot_prediction);
+%         
         % Change model structure so delays are included in A, not B 
         A_mpc = [A_dmd,       B_dmd(:, 1:end-nu);
                  eye((q-1)*ny),   zeros((q-1)*ny,ny)];
@@ -147,8 +147,8 @@ covariance = zeros(size(x_mpc.Covariance));
 covariance(y_rows, y_rows) = diag([2e-3, 1e-3, 1e-5, 1e-4]);
 x_mpc = mpcstate(mpc_drone_2d, [], [], [], [], covariance);
 
-t_p = 12; % For guidance, minimum desired settling time (s)
-t_c = 10; % desired control settling time
+t_p = 6; % For guidance, minimum desired settling time (s)
+t_c = 3; % desired control settling time
 mpc_drone_2d.PredictionHorizon  = floor(t_p/Ts_mpc); %t_s/Ts_mpc; % Prediction horizon (samples), initial guess according to MATLAB: Choose Sample Time and Horizons
 mpc_drone_2d.ControlHorizon     = floor(t_c/Ts_mpc); % Control horizon (samples)
 mpc_drone_2d.Weights.OutputVariables        = [1, 1, 0, 10, zeros(1, (q-1)*ny)]*tuning_weight;
