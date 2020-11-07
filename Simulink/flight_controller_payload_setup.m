@@ -81,7 +81,7 @@ CO = 2; % number of Controlled Outputs (x and z). theta is not controlled to a r
 dist_influence = 0; % Disturbances include uncertainty in model
 
 % Internal plant model
-model = 'havok'; % Choose which model to use for MPC
+model = 'dmd'; % Choose which model to use for MPC
 switch model
     case 'dmd'
 %         start_time = 20;
