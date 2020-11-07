@@ -156,26 +156,26 @@ mpc_drone_2d.Weights.ManipulatedVariables   = 5e-1*[1, 1]*tuning_weight; % Weigh
 mpc_drone_2d.Weights.ManipulatedVariablesRate     = 1e-2*[1, 1]/tuning_weight;
 
 % Output bounds
-theta_min = -30*(pi/180);
-theta_max = abs(theta_min); % Anton's pitch command constraint
-
-mpc_drone_2d.OV(3).Min = theta_min;
-mpc_drone_2d.OV(3).Max = theta_max;
-
-% Input bounds
-
-% Normalised
-F_r_z_min = -150;
-F_r_z_max = abs((M + m)*g);
-
-F_r_x_max = F_r_z_max;
-F_r_x_min = -F_r_x_max;
-
-mpc_drone_2d.MV(1).Min = F_r_x_min;
-mpc_drone_2d.MV(1).Max = F_r_x_max;
-
-mpc_drone_2d.MV(2).Min = F_r_z_min;
-mpc_drone_2d.MV(2).Max = F_r_z_max;
+% theta_min = -30*(pi/180);
+% theta_max = abs(theta_min); % Anton's pitch command constraint
+% 
+% mpc_drone_2d.OV(3).Min = theta_min;
+% mpc_drone_2d.OV(3).Max = theta_max;
+% 
+% % Input bounds
+% 
+% % Normalised
+% F_r_z_min = -150;
+% F_r_z_max = abs((M + m)*g);
+% 
+% F_r_x_max = F_r_z_max;
+% F_r_x_min = -F_r_x_max;
+% 
+% mpc_drone_2d.MV(1).Min = F_r_x_min;
+% mpc_drone_2d.MV(1).Max = F_r_x_max;
+% 
+% mpc_drone_2d.MV(2).Min = F_r_z_min;
+% mpc_drone_2d.MV(2).Max = F_r_z_max;
 
 % Display
 mpc_drone_2d 
