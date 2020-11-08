@@ -1,5 +1,5 @@
 %% Implentation of Hankel Alternative View Of Koopman for 2D Drone
-% close all;
+close all;
 
 % Extract data
 simulation_data_file = 'With_payload_data_12';
@@ -77,9 +77,9 @@ catch
     disp('No saved results file')  
 end
 
-% % Override parameters:
-% q = 80
-% p = 40
+% Override parameters:
+q = 8;
+p = 23;
 
 q
 p
@@ -106,6 +106,34 @@ plot(p, S1(p,p), 'ro'), hold off;
 U_tilde = U1(:, 1:p); 
 S_tilde = S1(1:p, 1:p);
 V_tilde = V1(:, 1:p);
+
+% Superposition of Y and U influence in V space:
+% (U_tilde*S_tilde)*V_tilde     \approx =                       [Y, U]
+%                               V_tilde = pinv(U_tilde*S_tilde)*[Y; U] 
+% T = pinv(U_tilde*S_tilde) = [TY; TU]
+% V_tilde = [TY, TU]*[Y; U] = TY*Y + TU*U
+%                           = VY   + VU    
+
+% Transformation matrices
+T = pinv(U_tilde*S_tilde); % Transformation matrix from YU_bar to V
+TY = T(:, 1:q*ny);
+TU = T(:, q*ny+1:end);
+
+% Map X and U to V-space
+Yv = TY*Y; % Y matrix in V-space (Y contribution to V_tilde)
+Uv = TU*Upsilon; % Upslion matrix in V-space (Upsilon contribution to V_tilde)
+
+% Setup for DMD regression
+Yv2 = Yv(:, 2:end  ); % One timestep ahead of VY1
+Yv1 = Yv(:, 1:end-1);
+Uv1 = Uv(:, 1:end-1);
+% Yv2 = Av*Yv1 + Bv*Yv1    <- reduced order model format
+% Yv2 = [Av, Bv]*[Yv1;Uv1]
+
+% Regression
+ABv = Yv2*pinv([Yv1; Uv1]); % [A,B] for V-space
+Av = ABv(:, 1:p);
+Bv = ABv(:, p+1:end);
 
 % Setup V2 one timestep into future from V1
 V_til_2 = V_tilde(2:end  , :)'; % Turnd on side (wide short matrix)
@@ -141,6 +169,43 @@ B  = AB(:,(q*ny+1):end);
 % A = stabilise(A,10);
 
 % Compare to testing data
+
+%% Run with HAVOK with Reduced Order Modelling and Control
+
+% Initial condition (last entries of training data)
+y_hat_0 = zeros(q*ny,1); % Y[k] at top
+for row = 0:q-1 % First column of spaced Hankel matrix
+    y_hat_0(row*ny+1:(row+1)*ny, 1) = y_test(:,q-row);
+end
+
+% Convert to V-space:
+yv_0 = TY*y_hat_0; % Initial condintion in V-space
+Uv_test = TU*u_test; % Control inputs in V-space
+
+% Run model
+Yv_hat = zeros(length(yv_0),N_test); % Empty estimated Y
+Yv_hat(:,q) = yv_0; % Initial condition
+for k = q:N_test-1
+    Yv_hat(:,k+1) = Av*Yv_hat(:,k) + Bv*Uv_test(:,k);
+end
+
+% Convert to Y-space (original)
+Y_hat_v = pinv(TY)*Yv_hat;
+y_hat_v = Y_hat_v(1:ny, :); % Extract only non-delay time series
+
+%% Plot data vs model
+figure;
+plot(t_train, y_train);
+hold on;
+plot(t_test, y_test);
+
+% plot(t_test, y_hat, 'k--', 'LineWidth', 1); % Plot only non-delay coordinate
+plot(t_test, y_hat_v, 'r--', 'LineWidth', 1); % Plot only non-delay coordinate
+title('Training and Testing data vs ROM HAVOK');
+% legend('','','','','','', 'x hat','z hat','theta hat', 'x hat bar','z hat bar','theta hat bar');
+hold off;
+
+MAE_v = sum(abs(y_hat_v - y_test), 2)./N_test % For each measured state
 
 %% Run with HAVOK (A_havok, B_havok and x)
 % figure;
@@ -191,16 +256,16 @@ MAE = sum(abs(y_hat_bar - y_test), 2)./N_test % For each measured state
 % MAE_error_percent = (MAE - MAE_bar)./MAE_bar*100
 
 %% Plot data vs model
-figure;
-plot(t_train, y_train);
-hold on;
-plot(t_test, y_test);
-
-% plot(t_test, y_hat, 'k--', 'LineWidth', 1); % Plot only non-delay coordinate
-plot(t_test, y_hat_bar, 'r--', 'LineWidth', 1); % Plot only non-delay coordinate
-title('Training and Testing data vs Model (red = HAVOK, black = DMD)');
-% legend('','','','','','', 'x hat','z hat','theta hat', 'x hat bar','z hat bar','theta hat bar');
-hold off;
+% figure;
+% plot(t_train, y_train);
+% hold on;
+% plot(t_test, y_test);
+% 
+% % plot(t_test, y_hat, 'k--', 'LineWidth', 1); % Plot only non-delay coordinate
+% plot(t_test, y_hat_bar, 'r--', 'LineWidth', 1); % Plot only non-delay coordinate
+% title('Training and Testing data vs Model (red = HAVOK, black = DMD)');
+% % legend('','','','','','', 'x hat','z hat','theta hat', 'x hat bar','z hat bar','theta hat bar');
+% hold off;
 
 function A = stabilise(A_unstable,max_iterations)
     % If some eigenvalues are unstable due to machine tolerance,
