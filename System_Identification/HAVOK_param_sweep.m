@@ -18,7 +18,7 @@ p_increment = 1; % Increment value of p in grid search
 q_search = q_min:q_increment:q_max; % List of q parameters to search in
 % p_search defined before p for loop
 
-comment = 'no_angle_measure'; % Extra comment to differentiate this run
+comment = ''; % Extra comment to differentiate this run
 
 % Extract data
 simulation_data_file = 'With_payload_data_12';
@@ -26,7 +26,7 @@ load(['Data/', simulation_data_file, '.mat']) % Load simulation data
 
 Ts = 0.03;     % Desired sample time
 y_rows = 1:4;
-MAE_weight = [1; 1; 1]; % Weighting of error of each state when calculating mean
+MAE_weight = [1; 1; 1; 1]; % Weighting of error of each state when calculating mean
 
 % Adjust for constant disturbance / mean control values
 % u_bar = mean(out.u.Data,1); % Input needed to keep at a fixed point
@@ -78,7 +78,7 @@ Size = [length(q_search)*length(p_min:p_increment:p_max), length(VariableTypes)]
 % Read previous results
 sigma = 0;
 sig_str = strrep(num2str(sigma),'.','_'); % Convert sigma value to string
-results_file = ['Data/havok_results_', comment, '_', simulation_data_file, '_sig=', sig_str, '.mat'];
+results_file = ['Data/havok_results_', comment, simulation_data_file, '_sig=', sig_str, '.mat'];
 
 try
     load(results_file);

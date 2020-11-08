@@ -78,8 +78,8 @@ catch
 end
 
 % Override parameters:
-q = 8;
-p = 23;
+q = 3;
+p = 13;
 
 q
 p
@@ -180,13 +180,12 @@ end
 
 % Convert to V-space:
 yv_0 = TY*y_hat_0; % Initial condintion in V-space
-Uv_test = TU*u_test; % Control inputs in V-space
 
 % Run model
 Yv_hat = zeros(length(yv_0),N_test); % Empty estimated Y
 Yv_hat(:,q) = yv_0; % Initial condition
 for k = q:N_test-1
-    Yv_hat(:,k+1) = Av*Yv_hat(:,k) + Bv*Uv_test(:,k);
+    Yv_hat(:,k+1) = Av*Yv_hat(:,k) + Bv*TU*u_test(:,k);
 end
 
 % Convert to Y-space (original)
