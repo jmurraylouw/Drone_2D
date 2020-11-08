@@ -8,7 +8,7 @@ total_timer = tic; % Start timer for this script
 
 % Search space
 q_min = 2; % Min value of q in grid search
-q_max = 8; % Max value of q in grid search
+q_max = 10; % Max value of q in grid search
 q_increment = 1; % Increment value of q in grid search
 
 p_min = 2; % Min value of p in grid search
@@ -19,12 +19,12 @@ q_search = q_min:q_increment:q_max; % List of q parameters to search in
 % p_search defined before p for loop
 
 % Extract data
-simulation_data_file = 'With_payload_data_11';
+simulation_data_file = 'With_payload_data_12';
 load(['Data/', simulation_data_file, '.mat']) % Load simulation data
 
 Ts = 0.03;     % Desired sample time
 y_rows = 1:4;
-MAE_weight = [2; 1; 1; 1]; % Weighting of error of each state when calculating mean
+MAE_weight = [1; 1; 1; 1]; % Weighting of error of each state when calculating mean
 
 % Adjust for constant disturbance / mean control values
 % u_bar = mean(out.u.Data,1); % Input needed to keep at a fixed point

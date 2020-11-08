@@ -2,7 +2,7 @@
 % close all;
 
 % Extract data
-simulation_data_file = 'With_payload_data_11';
+simulation_data_file = 'With_payload_data_12';
 load(['Data/', simulation_data_file, '.mat']) % Load simulation data
 
 Ts = 0.03;     % Desired sample time
@@ -61,9 +61,9 @@ try
     q = double(best_results.q);
     p = double(best_results.p);
     
-    only_q_Ts = 0; % Try best result for specific q
+    only_q_Ts = 1; % Try best result for specific q
     if only_q_Ts
-        q = 5;
+        q = 3;
         q_results = results((results.q == q & results.Ts == Ts),:);
         best_row = find(q_results.MAE_mean == min(q_results.MAE_mean));
         best_results = q_results(best_row,:)
