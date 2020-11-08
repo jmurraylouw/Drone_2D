@@ -190,6 +190,14 @@ best_results_Ts = results_Ts((results_Ts.MAE_mean == min(results_Ts.MAE_mean)),:
 
 total_time = toc(total_timer); % Display total time taken
 
+%% For one q:
+results_q = results((results.q == 5),:);
+figure
+semilogy(results_q.p, results_q.MAE_1, 'r.')
+hold on
+semilogy(results_q.p, results_q.MAE_mean, 'k.')
+hold off
+
 %% Plot spread of results for this Ts
 plot_results = 1;
 if plot_results

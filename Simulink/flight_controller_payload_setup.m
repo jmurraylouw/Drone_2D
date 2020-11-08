@@ -37,10 +37,10 @@ tau   = 0.07; % Motor time constant
 
 m     = 2; % Mass of swinging payload (kg)
 l     = 1; % Length of pendulum (m)
-cbeta = 0.05; % Rotational damping coef of payload at connection
+cbeta = 0.03; % Rotational damping coef of payload at connection
 
-C_px = 0.05; % Damping coef. of drone through air in x direction
-C_pz = 0.05; % Damping coef. of drone through air in z direction
+C_px = 0.01; % Damping coef. of drone through air in x direction
+C_pz = 0.01; % Damping coef. of drone through air in z direction
 
 % Mixing Matrix
 MM = [-1, 1;
@@ -102,7 +102,7 @@ switch model
         B_mpc = [[B_dmd(:, end-nu+1:end); zeros((q-1)*ny, nu)], B_ud];
     
     case 'havok'
-        load('Data/havoc_model_4.mat')
+%         load('Data/havoc_model_4.mat')
         A_mpc = A_havok;
         B_ud = dist_influence*[eye(CO); zeros(q*ny - CO, CO)]; % B of unmeasured disturbance, for distrubance force in x and z
         B_mpc = [B_havok, B_ud];
@@ -193,7 +193,7 @@ num_waypoints = 100; % Number of waypoints included in command
 waypoints = table('Size', [(num_waypoints+1)*2, 3], 'VariableTypes', ["double", "double", "double"]);
 waypoints.Properties.VariableNames = {'point_time', 'x_coord', 'z_coord'};
 
-waypoint_opt = 'random x'; % waypoint option
+waypoint_opt = 'random xz'; % waypoint option
 switch waypoint_opt
     case 'random xz'
         x_coord = 0;
