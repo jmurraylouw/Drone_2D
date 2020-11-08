@@ -25,7 +25,7 @@ simulation_data_file = 'With_payload_data_12';
 load(['Data/', simulation_data_file, '.mat']) % Load simulation data
 
 Ts = 0.03;     % Desired sample time
-y_rows = 1:3;
+y_rows = 1:4;
 MAE_weight = [1; 1; 1]; % Weighting of error of each state when calculating mean
 
 % Adjust for constant disturbance / mean control values
