@@ -55,7 +55,7 @@ lambda = 0.985; % Exponential forgetting factor of moving average to smooth out 
 % model_intervals = 10; 
 
 % Dimentions
-y_rows = 1:4;
+y_rows = 1:3;
 nx = 8; % Number of states
 ny = length(y_rows); % Number of measurements
 nu = 2; % Number of inputs
@@ -102,7 +102,7 @@ switch model
         B_mpc = [[B_dmd(:, end-nu+1:end); zeros((q-1)*ny, nu)], B_ud];
     
     case 'havok'
-        load('Data/havoc_model_5.mat')
+%         load('Data/havoc_model_5.mat')
         A_mpc = A_havok;
         B_ud = dist_influence*[eye(CO); zeros(q*ny - CO, CO)]; % B of unmeasured disturbance, for distrubance force in x and z
         B_mpc = [B_havok, B_ud];
@@ -144,14 +144,16 @@ mpc_drone_2d = mpc(mpc_sys,Ts_mpc);
 % Manually set covariance
 x_mpc = mpcstate(mpc_drone_2d); % Initial state
 covariance = zeros(size(x_mpc.Covariance));
-covariance(y_rows, y_rows) = diag([2e-3, 1e-3, 1e-5, 1e-4]);
+covariance(y_rows, y_rows) = diag([2e-3, 1e-3, 1e-5]); % y_rows = 1:3
+% covariance(y_rows, y_rows) = diag([2e-3, 1e-3, 1e-5, 1e-4]); % y_rows = 1:4
 x_mpc = mpcstate(mpc_drone_2d, [], [], [], [], covariance);
 
 Ty = 6; % Prediction period, For guidance, minimum desired settling time (s)
 Tu = 3; % Control period, desired control settling time
 mpc_drone_2d.PredictionHorizon  = floor(Ty/Ts_mpc); %t_s/Ts_mpc; % Prediction horizon (samples), initial guess according to MATLAB: Choose Sample Time and Horizons
 mpc_drone_2d.ControlHorizon     = floor(Tu/Ts_mpc); % Control horizon (samples)
-mpc_drone_2d.Weights.OutputVariables        = [1, 1, 0, 10, zeros(1, (q-1)*ny)]*tuning_weight;
+mpc_drone_2d.Weights.OutputVariables        = [1, 1, 0, zeros(1, (q-1)*ny)]*tuning_weight; % y_rows = 1:3
+% mpc_drone_2d.Weights.OutputVariables        = [1, 1, 0, 10, zeros(1, (q-1)*ny)]*tuning_weight; % y_rows = 1:4
 mpc_drone_2d.Weights.ManipulatedVariables   = 5e-1*[1, 1]*tuning_weight; % Weights of delay coordinates to 0
 mpc_drone_2d.Weights.ManipulatedVariablesRate     = 1e-2*[1, 1]/tuning_weight;
 

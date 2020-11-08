@@ -7,7 +7,7 @@ load(['Data/', simulation_data_file, '.mat']) % Load simulation data
 
 Ts = 0.03;     % Desired sample time
 Ts_havok = Ts;
-y_rows = 1:4;
+y_rows = 1:3;
 
 % Adjust for constant disturbance / mean control values
 % u_bar = mean(out.u.Data,1); % Input needed to keep at a fixed point
@@ -47,9 +47,12 @@ nu = size(u_train,1); % number of inputs
 sigma = 0; % Noise standard deviation
 % y_data_noise = y_data + sigma*randn(size(y_data));
 
+comment = 'no_angle_measure'; % Extra comment to differentiate this run
+
 % Read previous results
+sigma = 0;
 sig_str = strrep(num2str(sigma),'.','_'); % Convert sigma value to string
-results_file = ['Data/havok_results_', simulation_data_file, '_sig=', sig_str, '.mat'];
+results_file = ['Data/havok_results_', comment, '_', simulation_data_file, '_sig=', sig_str, '.mat'];
 
 try
     load(results_file);
@@ -61,7 +64,7 @@ try
     q = double(best_results.q);
     p = double(best_results.p);
     
-    only_q_Ts = 1; % Try best result for specific q
+    only_q_Ts = 0; % Try best result for specific q
     if only_q_Ts
         q = 3;
         q_results = results((results.q == q & results.Ts == Ts),:);
