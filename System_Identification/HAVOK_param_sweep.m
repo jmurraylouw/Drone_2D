@@ -21,7 +21,7 @@ q_search = q_min:q_increment:q_max; % List of q parameters to search in
 comment = ''; % Extra comment to differentiate this run
 
 % Extract data
-simulation_data_file = 'With_payload_data_12';
+simulation_data_file = 'With_payload_and_noise_data_1';
 load(['Data/', simulation_data_file, '.mat']) % Load simulation data
 
 Ts = 0.03;     % Desired sample time

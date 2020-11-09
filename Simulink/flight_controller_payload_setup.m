@@ -42,6 +42,12 @@ cbeta = 0.03; % Rotational damping coef of payload at connection
 C_px = 0.01; % Damping coef. of drone through air in x direction
 C_pz = 0.01; % Damping coef. of drone through air in z direction
 
+% Noise parameters
+omega_b_noise = 6e-8; % Anglular velocity. Noise power of bandwidth limited white noise
+quat_noise = 6e-8; % Angles
+vel_e_noise = 4e-8; % Linear Velocity
+pos_e_noise = 4e-7; % Linear position
+
 % Mixing Matrix
 MM = [-1, 1;
        1, 1]; % [T1; T2] = MM*[delta_E; delta_T]
@@ -81,7 +87,7 @@ CO = 2; % number of Controlled Outputs (x and z). theta is not controlled to a r
 dist_influence = 0; % Disturbances include uncertainty in model
 
 % Internal plant model
-model = 'havok'; % Choose which model to use for MPC
+model = 'dmd'; % Choose which model to use for MPC
 switch model
     case 'dmd'
 %         start_time = 20;
@@ -102,7 +108,7 @@ switch model
         B_mpc = [[B_dmd(:, end-nu+1:end); zeros((q-1)*ny, nu)], B_ud];
     
     case 'havok'
-        load('Data/havoc_model_5.mat')
+%         load('Data/havoc_model_5.mat')
         A_mpc = A_havok;
         B_ud = dist_influence*[eye(CO); zeros(q*ny - CO, CO)]; % B of unmeasured disturbance, for distrubance force in x and z
         B_mpc = [B_havok, B_ud];
