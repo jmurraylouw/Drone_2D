@@ -35,8 +35,8 @@ C_Dz  = 0.2; % Damping coef. of drone in z direction
 rho   = 1.225; % Air density (kg/m^3)
 tau   = 0.07; % Motor time constant
 
-m     = 2; % Mass of swinging payload (kg)
-l     = 1; % Length of pendulum (m)
+m     = 2.5; % Mass of swinging payload (kg)
+l     = 0.5; % Length of pendulum (m)
 cbeta = 0.03; % Rotational damping coef of payload at connection
 
 C_px = 0.01; % Damping coef. of drone through air in x direction
