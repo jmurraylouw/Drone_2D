@@ -1,15 +1,14 @@
 %% Save data
-description = 'DMD with noise. step x = 1 ';
+description = 'DMD with diff_params. step x = 1 ';
 m_sim = m; % m used in simulation
 l_sim = l; % l used in simulation
 cbeta_sim = cbeta;
-save('Plots/dmd_noise.mat', 'description', 'out', 'm_sim', 'l_sim', 'cbeta_sim')
+save('Plots/dmd_diff_params.mat', 'description', 'out', 'm_sim', 'l_sim', 'cbeta_sim')
 
 % Write data to csv files
 Ts_csv = 0.01;
 
 %% DMD
-load('Plots/dmd_noise.mat');
 
 t = 0:Ts_csv:39;
 
@@ -39,5 +38,5 @@ table_data = array2table([t', X_pid, T_pid, X_dmd, T_dmd]);
 
 table_data.Properties.VariableNames = {'t',  'x_pid', 'z_pid', 'th_pid', 'b_pid', 'dx_pid', 'dz_pid', 'dth_pid', 'db_pid', 'T1_pid', 'T2_pid','x_dmd', 'z_dmd', 'th_dmd', 'b_dmd', 'dx_dmd', 'dz_dmd', 'dth_dmd', 'db_dmd', 'T1_dmd', 'T2_dmd'};
 %     , 'x_dmd', 'z_dmd', 'th_dmd', 'b_dmd', 'dx_dmd', 'dz_dmd', 'dth_dmd', 'db_dmd', 'T1_dmd', 'T2_dmd'};
-writetable(table_data,'Plots/dmd_noise.csv')
+writetable(table_data,'Plots/dmd_diff_params.csv')
 
