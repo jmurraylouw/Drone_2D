@@ -1,21 +1,21 @@
 %% Implentation of Hankel Alternative View Of Koopman for 2D Drone
 % close all;
 
-% Extract data
-simulation_data_file = 'With_payload_data_12';
-load(['Data/', simulation_data_file, '.mat']) % Load simulation data
-
-Ts = 0.03;     % Desired sample time
-Ts_havok = Ts;
-y_rows = 1:4;
-
-% Adjust for constant disturbance / mean control values
-% u_bar = mean(out.u.Data,1); % Input needed to keep at a fixed point
-u_bar = [0, (m + M)*g];
-out.u.Data  = out.u.Data - u_bar; % Adjust for unmeasured input
+% % Extract data
+% simulation_data_file = 'With_payload_and_noise_data_1';
+% load(['Data/', simulation_data_file, '.mat']) % Load simulation data
+% 
+% Ts = 0.03;     % Desired sample time
+% Ts_havok = Ts;
+% y_rows = 1:4;
+% 
+% % Adjust for constant disturbance / mean control values
+% % u_bar = mean(out.u.Data,1); % Input needed to keep at a fixed point
+% u_bar = [0, (m + M)*g];
+% out.u.Data  = out.u.Data - u_bar; % Adjust for unmeasured input
 
 % Training data
-train_time = 0:Ts:200;
+% train_time = 0:Ts:200;
 x_train = resample(out.x, train_time );% Resample time series to desired sample time and training period  
 u_train = resample(out.u, train_time );  
 t_train = x_train.Time';
@@ -26,7 +26,7 @@ y_train = x_train(y_rows,:);
 u_train = u_train.Data';
 
 % Testing data
-test_time = 200:Ts:300;
+% test_time = 200:Ts:300;
 x_test = resample(out.x, test_time );  
 u_test = resample(out.u, test_time );  
 t_test = x_test.Time';
@@ -64,9 +64,9 @@ try
     q = double(best_results.q);
     p = double(best_results.p);
     
-    only_q_Ts = 0; % Try best result for specific q
+    only_q_Ts = 1; % Try best result for specific q
     if only_q_Ts
-        q = 3;
+        q = 20;
         q_results = results((results.q == q & results.Ts == Ts),:);
         best_row = find(q_results.MAE_mean == min(q_results.MAE_mean));
         best_results = q_results(best_row,:)

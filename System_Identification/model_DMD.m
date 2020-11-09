@@ -1,4 +1,4 @@
-function [A, B] = model_DMD(out, start_time, end_time, Ts, q, y_rows, sigma, plot_prediction, varargin)
+function [A, B] = model_DMD(out, start_time, end_time, Ts, q, p, y_rows, sigma, plot_prediction, varargin)
 %% Generate a DMD model from simulation data with specific Ts and q
 % A = discrete state-space system matrix
 % B = input matrix
@@ -67,7 +67,18 @@ Y2 = Y(:, 2:end  );
 Y1 = Y(:, 1:end-1);
 
 YU = [Y1; Upsilon(:,1:end-1)]; % Combined matrix of Y above and U below
-AB = Y2*pinv(YU); % combined A and B matrix, side by side
+
+% SVD of the Hankel matrix
+[U1,S1,V1] = svd(YU, 'econ');
+
+% Truncate SVD matrixes
+U_tilde = U1(:, 1:p); 
+S_tilde = S1(1:p, 1:p);
+V_tilde = V1(:, 1:p);
+
+% YU = \approx U_tilde*S_tilde*V_tilde'
+AB = Y2*pinv(U_tilde*S_tilde*V_tilde'); % combined A and B matrix, side by side
+% AB = Y2*pinv(YU); % combined A and B matrix, side by side
 
 % System matrixes from DMD
 A  = AB(:,1:ny); % Extract A matrix

@@ -1,5 +1,5 @@
 % Write data to csv files
-Ts_csv = 0.1;
+Ts_csv = 0.01;
 
 %% HAVOK
 load('Plots/MPC_havok_vs_pid_step_10.mat');

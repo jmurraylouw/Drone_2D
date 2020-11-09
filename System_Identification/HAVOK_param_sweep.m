@@ -8,7 +8,7 @@ total_timer = tic; % Start timer for this script
 
 % Search space
 q_min = 2; % Min value of q in grid search
-q_max = 10; % Max value of q in grid search
+q_max = 30; % Max value of q in grid search
 q_increment = 1; % Increment value of q in grid search
 
 p_min = 2; % Min value of p in grid search
@@ -25,6 +25,7 @@ simulation_data_file = 'With_payload_and_noise_data_1';
 load(['Data/', simulation_data_file, '.mat']) % Load simulation data
 
 Ts = 0.03;     % Desired sample time
+Ts_havok = Ts;
 y_rows = 1:4;
 MAE_weight = [1; 1; 1; 1]; % Weighting of error of each state when calculating mean
 
@@ -34,7 +35,7 @@ u_bar = [0, (m + M)*g];
 out.u.Data  = out.u.Data - u_bar; % Adjust for unmeasured input
 
 % Training data
-train_time = 0:Ts:200;
+train_time = 0:Ts:300;
 x_train = resample(out.x, train_time );% Resample time series to desired sample time and training period  
 u_train = resample(out.u, train_time );  
 t_train = x_train.Time';
@@ -45,7 +46,7 @@ y_train = x_train(y_rows,:);
 u_train = u_train.Data';
 
 % Testing data
-test_time = 200:Ts:300;
+test_time = 300:Ts:400;
 x_test = resample(out.x, train_time );  
 u_test = resample(out.u, train_time );  
 t_test = x_test.Time';

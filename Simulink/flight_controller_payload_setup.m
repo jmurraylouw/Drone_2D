@@ -43,6 +43,7 @@ C_px = 0.01; % Damping coef. of drone through air in x direction
 C_pz = 0.01; % Damping coef. of drone through air in z direction
 
 % Noise parameters
+Ts_noise = 0.01; % Sampling time of noise
 omega_b_noise = 6e-8; % Anglular velocity. Noise power of bandwidth limited white noise
 quat_noise = 6e-8; % Angles
 vel_e_noise = 4e-8; % Linear Velocity
@@ -108,7 +109,7 @@ switch model
         B_mpc = [[B_dmd(:, end-nu+1:end); zeros((q-1)*ny, nu)], B_ud];
     
     case 'havok'
-        load('Data/havoc_model_5.mat')
+%         load('Data/havoc_model_5.mat')
         A_mpc = A_havok;
         B_ud = dist_influence*[eye(CO); zeros(q*ny - CO, CO)]; % B of unmeasured disturbance, for distrubance force in x and z
         B_mpc = [B_havok, B_ud];
@@ -196,6 +197,7 @@ DX_nom = zeros(q*ny,1);
 % Way points
 num_waypoints = 100; % Number of waypoints included in command
 
+clear table
 waypoints = table('Size', [(num_waypoints+1)*2, 3], 'VariableTypes', ["double", "double", "double"]);
 waypoints.Properties.VariableNames = {'point_time', 'x_coord', 'z_coord'};
 
