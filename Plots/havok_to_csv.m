@@ -1,15 +1,15 @@
 %% Save data
-description = 'HAVOK with different params. step x = 1 ';
-m_sim = m; % m used in simulation
-l_sim = l; % l used in simulation
-cbeta_sim = cbeta;
-save('Plots/havok_diff_params.mat', 'description', 'out', 'm_sim', 'l_sim', 'cbeta_sim')
+% description = 'HAVOK with different params. step x = 1 ';
+% m_sim = m; % m used in simulation
+% l_sim = l; % l used in simulation
+% cbeta_sim = cbeta;
+% % save('Plots/havok_diff_params.mat', 'description', 'out', 'm_sim', 'l_sim', 'cbeta_sim')
 
 % Write data to csv files
-Ts_csv = 0.01;
+Ts_csv = 0.1;
 
 %% HAVOK
-% load('Plots/havok_noise.mat');
+load('Plots/havok_diff_params.mat');
 
 t = 0:Ts_csv:39;
 
