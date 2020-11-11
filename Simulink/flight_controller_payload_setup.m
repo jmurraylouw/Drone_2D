@@ -43,16 +43,19 @@ C_px = 0.01; % Damping coef. of drone through air in x direction
 C_pz = 0.01; % Damping coef. of drone through air in z direction
 
 % Noise parameters
-% Ts_noise = 0.01; % Sampling time of noise
+Ts_noise = 0.01; % Sampling time of noise
+noise_scale = 20; % moderate = 1 (data_1), large = 10 (data_2), XL = 20 (data_3)
+omega_b_noise = (6e-8)*noise_scale; % Anglular velocity. Noise power of bandwidth limited white noise
+quat_noise = (6e-8)*noise_scale; % Angles
+vel_e_noise = (4e-8)*noise_scale; % Linear Velocity
+pos_e_noise = (4e-7)*noise_scale; % Linear position
+
+% Anton values:
 % omega_b_noise = 6e-8; % Anglular velocity. Noise power of bandwidth limited white noise
 % quat_noise = 6e-8; % Angles
 % vel_e_noise = 4e-8; % Linear Velocity
 % pos_e_noise = 4e-7; % Linear position
 
-omega_b_noise = 6e-7; % Anglular velocity. Noise power of bandwidth limited white noise
-quat_noise = 6e-7; % Angles
-vel_e_noise = 4e-7; % Linear Velocity
-pos_e_noise = 4e-7; % Linear position
 
 
 % Mixing Matrix
@@ -86,8 +89,8 @@ Ts_csv = 0.1; % Sample time of To Worspace blocks for csv data
 Ts_excite = 0; % Sample time
 var_excite = 0; % Variance of excitement signal (pulse train)
 
-simulation_data_file = 'With_payload_data_2';
-load(['Data/', simulation_data_file, '.mat']) % Load simulation data
+% simulation_data_file = 'With_payload_data_2';
+% load(['Data/', simulation_data_file, '.mat']) % Load simulation data
 
 % Disturbance model to account for model uncertainty (eliminate steady-state error)
 CO = 2; % number of Controlled Outputs (x and z). theta is not controlled to a reference
@@ -113,19 +116,21 @@ switch model
         % B_mpc = [B_dmd(:, end-nu+1:end); zeros((q-1)*ny, nu)];
         B_ud = dist_influence*[eye(CO); zeros(q*ny - CO, CO)]; % B of unmeasured disturbance, for distrubance force in x and z
         B_mpc = [[B_dmd(:, end-nu+1:end); zeros((q-1)*ny, nu)], B_ud];
-    
+        % Sample time of MPC:
+        Ts_mpc = Ts_dmd;
+        
     case 'havok'
 %         load('Data/havoc_model_5.mat')
         A_mpc = A_havok;
         B_ud = dist_influence*[eye(CO); zeros(q*ny - CO, CO)]; % B of unmeasured disturbance, for distrubance force in x and z
         B_mpc = [B_havok, B_ud];
+        Ts_mpc = Ts_havok;
         
     otherwise
         error("Choose only 'dmd' or 'havok' ")
 end
 
-% Sample time of MPC:
-Ts_mpc = Ts_havok;
+
 
 C_mpc = eye(q*ny);
 D_mpc = zeros(q*ny, nu + CO);

@@ -66,7 +66,7 @@ try
     
     only_q_Ts = 1; % Try best result for specific q
     if only_q_Ts
-        q = 16;
+        q = 36;
         q_results = results((results.q == q & results.Ts == Ts),:);
         best_row = find(q_results.MAE_mean == min(q_results.MAE_mean));
         best_results = q_results(best_row,:)
@@ -126,21 +126,6 @@ B_havok = AB_havok(1:q*ny, q*ny+1:end);
 % Make matrix sparse
 A_havok(ny+1:end, :) = [eye((q-1)*ny), zeros((q-1)*ny, ny)]; % Add Identity matrix to carry delays over to x(k+1)
 B_havok(ny+1:end, :) = zeros((q-1)*ny, nu); % Input has no effect on delays
-
-% DMD of Y
-Y2 = Y(:, 2:end  );
-Y1 = Y(:, 1:end-1);
-
-YU = [Y1; Upsilon(:,1:end-1)]; % Combined matrix of Y and U, above and below
-AB = Y2*pinv(YU); % combined A and B matrix, side by side
-
-% System matrixes from DMD
-A  = AB(:,1:q*ny); % Extract A matrix
-B  = AB(:,(q*ny+1):end);
-
-% A = stabilise(A,10);
-
-% Compare to testing data
 
 %% Run with HAVOK (A_havok, B_havok and x)
 % figure;

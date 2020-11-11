@@ -7,8 +7,8 @@ close all;
 total_timer = tic; % Start timer for this script
 
 % Search space
-q_min = 10; % Min value of q in grid search
-q_max = 20; % Max value of q in grid search
+q_min = 16; % Min value of q in grid search
+q_max = 40; % Max value of q in grid search
 q_increment = 1; % Increment value of q in grid search
 
 p_min = 2; % Min value of p in grid search
@@ -21,7 +21,7 @@ q_search = q_min:q_increment:q_max; % List of q parameters to search in
 comment = ''; % Extra comment to differentiate this run
 
 % Extract data
-simulation_data_file = 'With_payload_and_noise_data_2';
+simulation_data_file = 'With_payload_and_noise_data_3';
 load(['Data/', simulation_data_file, '.mat']) % Load simulation data
 
 Ts = 0.03;     % Desired sample time
@@ -46,9 +46,9 @@ y_train = x_train(y_rows,:);
 u_train = u_train.Data';
 
 % Testing data
-test_time = 300:Ts:350;
-x_test = resample(out.x, train_time );  
-u_test = resample(out.u, train_time );  
+test_time = 300:Ts:400;
+x_test = resample(out.x, test_time );  
+u_test = resample(out.u, test_time );  
 t_test = x_test.Time';
 N_test = length(t_test); % Num of data samples for testing
 
@@ -111,7 +111,7 @@ for q = q_search
             
             if q_is_new % Do this only when q is seen first time
                 q_is_new = 0; % q is no longer new
-            
+                
                 w = N_train - q + 1; % num columns of Hankel matrix
                 D = (q-1)*Ts; % Delay duration (Dynamics in delay embedding)
                 
@@ -151,8 +151,8 @@ for q = q_search
             % AB = Y2*pinv(YU); % combined A and B matrix, side by side
 
             % System matrixes from DMD
-            A  = AB(:,1:ny); % Extract A matrix
-            B  = AB(:,(ny+1):end);
+            A_dmd  = AB(:,1:ny); % Extract A matrix
+            B_dmd  = AB(:,(ny+1):end);
             % A = stabilise(A,1);
             
             % Initial condition
@@ -171,7 +171,7 @@ for q = q_search
             y_hat(:,1) = y_hat_0; % Initial condition
             for k = 1:N_test-1
                 upsilon = [y_delays; u_test(:,k)]; % Concat delays and control for use with B
-                y_hat(:,k+1) = A*y_hat(:,k) + B*upsilon;
+                y_hat(:,k+1) = A_dmd*y_hat(:,k) + B_dmd*upsilon;
                 if q ~= 1
                     y_delays = [y_hat(:,k); y_delays(1:(end-ny),:)]; % Add y(k) to y_delay for next step [y(k); y(k-1); ...]
                 end
@@ -198,24 +198,24 @@ save(results_file, 'results', 'emptry_row')
 best_results_overall = results((results.MAE_mean == min(results.MAE_mean)),:)
 
 %% Only for this Ts:
-results_Ts = results((results.Ts == Ts),:);
-best_results_Ts = results_Ts((results_Ts.MAE_mean == min(results_Ts.MAE_mean)),:)
-
-total_time = toc(total_timer); % Display total time taken
-
-%% For one q:
-results_q = results((results.q == 5),:);
-figure
-semilogy(results_q.p, results_q.MAE_1, 'r.')
-hold on
-semilogy(results_q.p, results_q.MAE_mean, 'k.')
-hold off
+% results_Ts = results((results.Ts == Ts),:);
+% best_results_Ts = results_Ts((results_Ts.MAE_mean == min(results_Ts.MAE_mean)),:)
+% 
+% total_time = toc(total_timer); % Display total time taken
+% 
+% %% For one q:
+% results_q = results((results.q == 5),:);
+% figure
+% semilogy(results_q.p, results_q.MAE_1, 'r.')
+% hold on
+% semilogy(results_q.p, results_q.MAE_mean, 'k.')
+% hold off
 
 %% Plot spread of results for this Ts
 plot_results = 1;
 if plot_results
-    semilogy(results_Ts.q, results_Ts.MAE_mean, '.')
-    ylim([1e-3, 1e0])
+    semilogy(results.q, results.MAE_mean, '.')
+    ylim([1e-1, 1e0])
 end
 
 function A = stabilise(A_unstable,max_iterations)
