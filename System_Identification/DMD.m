@@ -1,130 +1,150 @@
-%% Implentation of DMD for 2D Drone
-close all;
+%% Implentation of Hankel Alternative View Of Koopman for 2D Drone
+% close all;
 
-% Load simulation data
-simulation_data_file = 'No_payload_data_6';
-load(['Data/', simulation_data_file, '.mat']) % Load simulation data
+% % Extract data
+% simulation_data_file = 'With_payload_and_noise_data_1';
+% load(['Data/', simulation_data_file, '.mat']) % Load simulation data
+% 
+% Ts = 0.03;     % Desired sample time
+% Ts_havok = Ts;
+% y_rows = 1:4;
+% 
+% % Adjust for constant disturbance / mean control values
+% % u_bar = mean(out.u.Data,1); % Input needed to keep at a fixed point
+% u_bar = [0, (m + M)*g];
+% out.u.Data  = out.u.Data - u_bar; % Adjust for unmeasured input
 
-% Resample time series to desired sample time
-Ts = 0.02;     % Desired sample time of data
-x_resamp = resample(out.x,   0:Ts:out.x.Time(end));  
-u_resamp = resample(out.F_r, 0:Ts:out.x.Time(end));  
+% Training data
+% train_time = 0:Ts:200;
+x_train = resample(out.x, train_time );% Resample time series to desired sample time and training period  
+u_train = resample(out.u, train_time );  
+t_train = x_train.Time';
+N_train = length(t_train);
 
-% Extract data
-u_data  = u_resamp.Data';
-x_data  = x_resamp.Data';
-y_data  = x_data(1:end,:); % Measurement data
-t       = x_resamp.Time'; % Time
+x_train = x_train.Data';
+y_train = x_train(y_rows,:);
+u_train = u_train.Data';
 
-u_data_org = u_data;
-% Adjust for constant disturbance / mean control values
-u_bar = mean(u_data,2); % Input needed to keep at a fixed point
-% u_bar = [0; -4.5*9.81];
-u_data  = u_data - u_bar; % Adjust for unmeasured input
+% Testing data
+% test_time = 400:Ts:500;
+x_test = resample(out.x, test_time );  
+u_test = resample(out.u, test_time );  
+t_test = x_test.Time';
+N_test = length(t_test); % Num of data samples for testing
 
-% Testing data - Last 50 s is for testing and one sample overlaps training 
-N_test = 1000; % Num of data samples for testing
-x_test = x_data(:,end-N_test+1:end);
-y_test = y_data(:,end-N_test+1:end); % One sample of testing data overlaps for initial condition
-u_test = u_data(:,end-N_test+1:end);
-t_test = t(:,end-N_test+1:end);
+x_test = x_test.Data';
+y_test = x_test(y_rows,:); % One sample of testing data overlaps for initial condition
+u_test = u_test.Data';
 
 % Data dimentions
-nx = size(x_data,1); % number of states
-ny = size(y_data,1); % number of measurements
-nu = size(u_data,1); % number of inputs
-N  = length(t);     % Number of data samples
+nx = size(x_train,1); % number of states
+ny = size(y_train,1); % number of measurements
+nu = size(u_train,1); % number of inputs
 
-% Add noise
-rng('default');
-rng(1); % Repeatable random numbers
-sigma = 0.001; % Noise standard deviation
-y_data_noise = y_data + sigma*randn(size(y_data));
+% % Add noise
+% rng('default');
+% rng(1); % Repeatable random numbers
+% sigma = 0; % Noise standard deviation
+% y_data_noise = y_data + sigma*randn(size(y_data));
 
-% Training data - Last sample of training is first sample of testing
-N_train = 30/Ts % Number of sampels in training data
-y_train = y_data_noise(:, end-N_test-N_train+2:end-N_test+1); % Use noisy data
-u_train = u_data(:,end-N_test-N_train+2:end-N_test+1);
-t_train = t(:,end-N_test-N_train+2:end-N_test+1);
-
-% Read previous results
-sig_str = strrep(num2str(sigma),'.','_'); % Convert sigma value to string
-results_file = ['Data/dmd_results_', simulation_data_file, '_sig=', sig_str, '.mat'];
+% comment = ''; % Extra comment to differentiate this run
+% 
+% % Read previous results
+% sigma = 0;
+% sig_str = strrep(num2str(sigma),'.','_'); % Convert sigma value to string
+% results_file = ['Data/havok_results_', comment, simulation_data_file, '_sig=', sig_str, '.mat'];
 
 try
     load(results_file);
     results(~results.q,:) = []; % remove empty rows
+    
+    % Parameters
+    best_row = find(results.MAE_mean == min(results.MAE_mean));
+    best_results = results(best_row,:);
+    q = double(best_results.q);
+    p = double(best_results.p);
+    
+    only_q_Ts = 1; % Try best result for specific q
+    if only_q_Ts
+        q = 16;
+        q_results = results((results.q == q & results.Ts == Ts),:);
+        best_row = find(q_results.MAE_mean == min(q_results.MAE_mean));
+        best_results = q_results(best_row,:)
+        p = double(best_results.p);
+    end
+    
 catch
     disp('No saved results file')  
 end
 
-% Parameters
-% best_row = find(results.MAE_mean == min(results.MAE_mean));
-% best_results = results(best_row,:)
-% q = double(best_results.q);
-% p = double(best_results.p);
+% % Override parameters:
+% q = 80
+% p = 40
 
-q = 10; % Override
+q
+p
 
 w = N_train - q + 1; % num columns of Hankel matrix
+D = (q-1)*Ts; % Delay duration (Dynamics in delay embedding)
 
-if q == 1
+% Hankel matrix with delay measurements
+if q == 1 % Special case if no delay coordinates
     Upsilon = u_train(:, q:end);
 else
-    % Hankel matrix with delay measurements
-    Upsilon = zeros((q-1)*ny,w); % Augmented state with delay coordinates [...; Y(k-2); Y(k-1); Y(k)]
+    Upsilon = zeros((q-1)*ny,w); % Augmented state Y[k] at top
     for row = 0:q-2 % Add delay coordinates
         Upsilon((end - ny*(row+1) + 1):(end - ny*row), :) = y_train(:, row + (1:w));
     end
 
-    % Matrix with time series of states
-    Y = y_train(:, q-1 + (1:w));
 
     Upsilon = [Upsilon; u_train(:, q:end)]; % Leave out last time step to match V_til_1
 end
 
-YU_bar = [Y; Upsilon];
+% Matrix with time series of states
+Y = y_train(:, q-1 + (1:w));
 
 % DMD of Y
 Y2 = Y(:, 2:end  );
 Y1 = Y(:, 1:end-1);
 
-YU = [Y1; Upsilon(:,1:end-1)]; % Combined matrix of Y and U, above and below
-AB = Y2*pinv(YU); % combined A and B matrix, side by side
+YU = [Y1; Upsilon(:,1:end-1)]; % Combined matrix of Y above and U below
+
+% SVD of the Hankel matrix
+[U1,S1,V1] = svd(YU, 'econ');
+
+% Truncate SVD matrixes
+U_tilde = U1(:, 1:p); 
+S_tilde = S1(1:p, 1:p);
+V_tilde = V1(:, 1:p);
+
+% YU = \approx U_tilde*S_tilde*V_tilde'
+AB = Y2*pinv(U_tilde*S_tilde*V_tilde'); % combined A and B matrix, side by side
+% AB = Y2*pinv(YU); % combined A and B matrix, side by side
+
 
 % System matrixes from DMD
 A  = AB(:,1:ny); % Extract A matrix
 B  = AB(:,(ny+1):end);
-
-% A = stabilise(A,10);
+% A = stabilise(A,1);
 
 %% Run with A and x
 
-k_start = 25/Ts; % k from where to start applying model
-N_test = 10/Ts; % Number of data points to run and test for
-
-% Start at end of initial condition k
-y_run = y_data(:, k_start + (1:N_test));
-u_run = u_data(:, k_start + (1:N_test));
-t_run = t(:, k_start + (1:N_test));
-N_run = length(y_run);
-
 % Initial condition
-y_hat_0 = y_data(:,k_start);
+y_hat_0 = y_test(:,q);
 
 % Initial delay coordinates
 y_delays = zeros((q-1)*ny,1);
-k = k_start; % index of y_data
+k = q; % index of y_data
 for i = 1:ny:ny*(q-1) % index of y_delays
     k = k - 1; % previosu index of y_data
-    y_delays(i:(i+ny-1)) = y_data(:,k);
+    y_delays(i:(i+ny-1)) = y_test(:,k);
 end
 
 % Run model
-y_hat = zeros(ny,N_run); % Empty estimated Y
+y_hat = zeros(ny,N_test); % Empty estimated Y
 y_hat(:,1) = y_hat_0; % Initial condition
-for k = 1:N_run-1
-    upsilon = [y_delays; u_run(:,k)]; % Concat delays and control for use with B
+for k = 1:N_test-1
+    upsilon = [y_delays; u_test(:,k)]; % Concat delays and control for use with B
     y_hat(:,k+1) = A*y_hat(:,k) + B*upsilon;
     if q ~= 1
         y_delays = [y_hat(:,k); y_delays(1:(end-ny),:)]; % Add y(k) to y_delay for next step [y(k); y(k-1); ...]
@@ -132,16 +152,18 @@ for k = 1:N_run-1
 end
 
 % Vector of Mean Absolute Error on testing data
-MAE = sum(abs(y_hat - y_run), 2)./N_run % For each measured state
+MAE = sum(abs(y_hat_bar - y_test), 2)./N_test % For each measured state
 
 %% Plot data vs model
 figure;
-plot(t_run, y_run);
+plot(t_train, y_train);
 hold on;
+plot(t_test, y_test);
 
-plot(t_run, y_hat, '--', 'LineWidth', 1); % Plot only non-delay coordinate
-title('Training and Testing data vs Model');
-legend()
+% plot(t_test, y_hat, 'k--', 'LineWidth', 1); % Plot only non-delay coordinate
+plot(t_test, y_hat_bar, 'r--', 'LineWidth', 1); % Plot only non-delay coordinate
+title('Training and Testing data vs Model (red = HAVOK, black = DMD)');
+% legend('','','','','','', 'x hat','z hat','theta hat', 'x hat bar','z hat bar','theta hat bar');
 hold off;
 
 function A = stabilise(A_unstable,max_iterations)

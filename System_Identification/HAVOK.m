@@ -166,30 +166,6 @@ y_hat_bar = Y_hat(1:ny, :); % Extract only non-delay time series
 % Vector of Mean Absolute Error on testing data
 MAE = sum(abs(y_hat_bar - y_test), 2)./N_test % For each measured state
 
-
-% %% Run with DMD (A and x)
-% 
-% % Initial condition
-% y_hat_0 = zeros(q*ny,1);
-% for row = 0:q-1 % First column of spaced Hankel matrix
-%     y_hat_0(row*ny+1:(row+1)*ny, 1) = y_train(:, end - ((q-1)+1) + row + 1);
-% end
-%             
-% % Run model
-% Y_hat = zeros(length(y_hat_0),N_test); % Empty estimated Y
-% Y_hat(:,1) = y_hat_0; % Initial condition
-% for k = 1:N_test-1
-%     Y_hat(:,k+1) = A*Y_hat(:,k) + B*u_test(:,k);
-% end
-% 
-% y_hat = Y_hat(end-ny+1:end, :); % Extract only non-delay time series (last m rows)
-% 
-% % Vector of Mean Absolute Error on testing data
-% MAE = sum(abs(y_hat - y_test), 2)./N_test % For each measured state
-% 
-% % Compare MAE and MAE_til
-% MAE_error_percent = (MAE - MAE_bar)./MAE_bar*100
-
 %% Plot data vs model
 figure;
 plot(t_train, y_train);
