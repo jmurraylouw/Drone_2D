@@ -26,7 +26,7 @@ y_train = x_train(y_rows,:);
 u_train = u_train.Data';
 
 % Testing data
-% test_time = 200:Ts:300;
+% test_time = 400:Ts:500;
 x_test = resample(out.x, test_time );  
 u_test = resample(out.u, test_time );  
 t_test = x_test.Time';
@@ -44,15 +44,15 @@ nu = size(u_train,1); % number of inputs
 % % Add noise
 % rng('default');
 % rng(1); % Repeatable random numbers
-sigma = 0; % Noise standard deviation
+% sigma = 0; % Noise standard deviation
 % y_data_noise = y_data + sigma*randn(size(y_data));
 
-comment = ''; % Extra comment to differentiate this run
-
-% Read previous results
-sigma = 0;
-sig_str = strrep(num2str(sigma),'.','_'); % Convert sigma value to string
-results_file = ['Data/havok_results_', comment, simulation_data_file, '_sig=', sig_str, '.mat'];
+% comment = ''; % Extra comment to differentiate this run
+% 
+% % Read previous results
+% sigma = 0;
+% sig_str = strrep(num2str(sigma),'.','_'); % Convert sigma value to string
+% results_file = ['Data/havok_results_', comment, simulation_data_file, '_sig=', sig_str, '.mat'];
 
 try
     load(results_file);
@@ -66,7 +66,7 @@ try
     
     only_q_Ts = 1; % Try best result for specific q
     if only_q_Ts
-        q = 20;
+        q = 16;
         q_results = results((results.q == q & results.Ts == Ts),:);
         best_row = find(q_results.MAE_mean == min(q_results.MAE_mean));
         best_results = q_results(best_row,:)

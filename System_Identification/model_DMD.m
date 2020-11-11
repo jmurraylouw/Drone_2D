@@ -80,6 +80,7 @@ V_tilde = V1(:, 1:p);
 AB = Y2*pinv(U_tilde*S_tilde*V_tilde'); % combined A and B matrix, side by side
 % AB = Y2*pinv(YU); % combined A and B matrix, side by side
 
+
 % System matrixes from DMD
 A  = AB(:,1:ny); % Extract A matrix
 B  = AB(:,(ny+1):end);

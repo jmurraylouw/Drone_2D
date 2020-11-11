@@ -7,8 +7,8 @@ close all;
 total_timer = tic; % Start timer for this script
 
 % Search space
-q_min = 2; % Min value of q in grid search
-q_max = 30; % Max value of q in grid search
+q_min = 10; % Min value of q in grid search
+q_max = 20; % Max value of q in grid search
 q_increment = 1; % Increment value of q in grid search
 
 p_min = 2; % Min value of p in grid search
@@ -21,7 +21,7 @@ q_search = q_min:q_increment:q_max; % List of q parameters to search in
 comment = ''; % Extra comment to differentiate this run
 
 % Extract data
-simulation_data_file = 'With_payload_and_noise_data_1';
+simulation_data_file = 'With_payload_and_noise_data_2';
 load(['Data/', simulation_data_file, '.mat']) % Load simulation data
 
 Ts = 0.03;     % Desired sample time
@@ -46,7 +46,7 @@ y_train = x_train(y_rows,:);
 u_train = u_train.Data';
 
 % Testing data
-test_time = 300:Ts:400;
+test_time = 300:Ts:350;
 x_test = resample(out.x, train_time );  
 u_test = resample(out.u, train_time );  
 t_test = x_test.Time';

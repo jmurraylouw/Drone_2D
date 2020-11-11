@@ -43,11 +43,17 @@ C_px = 0.01; % Damping coef. of drone through air in x direction
 C_pz = 0.01; % Damping coef. of drone through air in z direction
 
 % Noise parameters
-Ts_noise = 0.01; % Sampling time of noise
-omega_b_noise = 6e-8; % Anglular velocity. Noise power of bandwidth limited white noise
-quat_noise = 6e-8; % Angles
-vel_e_noise = 4e-8; % Linear Velocity
+% Ts_noise = 0.01; % Sampling time of noise
+% omega_b_noise = 6e-8; % Anglular velocity. Noise power of bandwidth limited white noise
+% quat_noise = 6e-8; % Angles
+% vel_e_noise = 4e-8; % Linear Velocity
+% pos_e_noise = 4e-7; % Linear position
+
+omega_b_noise = 6e-7; % Anglular velocity. Noise power of bandwidth limited white noise
+quat_noise = 6e-7; % Angles
+vel_e_noise = 4e-7; % Linear Velocity
 pos_e_noise = 4e-7; % Linear position
+
 
 % Mixing Matrix
 MM = [-1, 1;
@@ -88,7 +94,7 @@ CO = 2; % number of Controlled Outputs (x and z). theta is not controlled to a r
 dist_influence = 0; % Disturbances include uncertainty in model
 
 % Internal plant model
-model = 'havok'; % Choose which model to use for MPC
+model = 'dmd'; % Choose which model to use for MPC
 switch model
     case 'dmd'
 %         start_time = 20;
@@ -163,12 +169,12 @@ mpc_drone_2d.Weights.ManipulatedVariables   = 5e-1*[1, 1]*tuning_weight; % Weigh
 mpc_drone_2d.Weights.ManipulatedVariablesRate     = 1e-2*[1, 1]/tuning_weight;
 
 % Output bounds
-% theta_min = -30*(pi/180);
-% theta_max = abs(theta_min); % Anton's pitch command constraint
-% 
-% mpc_drone_2d.OV(3).Min = theta_min;
-% mpc_drone_2d.OV(3).Max = theta_max;
-% 
+beta_min = -15*(pi/180);
+beta_max = abs(beta_min); % Anton's pitch command constraint
+
+mpc_drone_2d.OV(4).Min = beta_min;
+mpc_drone_2d.OV(4).Max = beta_max;
+% % 
 % % Input bounds
 % 
 % % Normalised
