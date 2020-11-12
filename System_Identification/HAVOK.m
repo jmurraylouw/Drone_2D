@@ -66,7 +66,7 @@ try
     
     only_q_Ts = 0; % Try best result for specific q
     if only_q_Ts
-        q = 104;
+        q = 17;
         q_results = results((results.q == q & results.Ts == Ts),:);
         best_row = find(q_results.MAE_mean == min(q_results.MAE_mean));
         best_results = q_results(best_row,:)
