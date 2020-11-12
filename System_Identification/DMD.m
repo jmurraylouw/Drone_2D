@@ -15,7 +15,7 @@
 % out.u.Data  = out.u.Data - u_bar; % Adjust for unmeasured input
 
 % Training data
-% % train_time = 0:Ts:200;
+% train_time = 70:Ts:200;
 % x_train = resample(out.x, train_time );% Resample time series to desired sample time and training period  
 % u_train = resample(out.u, train_time );  
 % t_train = x_train.Time';
@@ -66,23 +66,31 @@ try
     
     only_q_Ts = 0; % Try best result for specific q
     if only_q_Ts
-        q = 20;
+        q = 19;
         q_results = results((results.q == q & results.Ts == Ts),:);
         best_row = find(q_results.MAE_mean == min(q_results.MAE_mean));
         best_results = q_results(best_row,:)
         p = double(best_results.p);
     end
     
+    override = 0;
+    if override
+        '!!!!!Override!!!!!!!'
+        p
+        q
+    end
+    % % Override parameters:
+    % q = 80
+    % p = 40
+   
+    q
+    p
+
+    
 catch
     disp('No saved results file')  
 end
 
-% % Override parameters:
-% q = 80
-% p = 40
-
-q
-p
 
 w = N_train - q + 1; % num columns of Hankel matrix
 D = (q-1)*Ts; % Delay duration (Dynamics in delay embedding)
@@ -123,7 +131,7 @@ AB = Y2*pinv(U_tilde*S_tilde*V_tilde'); % combined A and B matrix, side by side
 % System matrixes from DMD
 A_dmd  = AB(:,1:ny); % Extract A matrix
 B_dmd  = AB(:,(ny+1):end);
-% A = stabilise(A,1);
+% A_dmd = stabilise(A_dmd,1);
 
 % Initial condition
 y_hat_0 = y_test(:,q);

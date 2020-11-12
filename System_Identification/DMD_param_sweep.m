@@ -2,17 +2,17 @@
 % Grid search of parameters
 % Saves all the results for different parameter combinations
 
-close all;
+% close all;
 
 total_timer = tic; % Start timer for this script
 
 % Search space
-q_min = 16; % Min value of q in grid search
-q_max = 40; % Max value of q in grid search
+q_min = 2; % Min value of q in grid search
+q_max = 15; % Max value of q in grid search
 q_increment = 1; % Increment value of q in grid search
 
-p_min = 2; % Min value of p in grid search
-p_max = 300; % Max value of p in grid search
+p_min = 10; % Min value of p in grid search
+p_max = q_max*4; % Max value of p in grid search
 p_increment = 1; % Increment value of p in grid search
 
 q_search = q_min:q_increment:q_max; % List of q parameters to search in
@@ -21,13 +21,15 @@ q_search = q_min:q_increment:q_max; % List of q parameters to search in
 comment = ''; % Extra comment to differentiate this run
 
 % Extract data
-simulation_data_file = 'With_payload_and_noise_data_3';
+% simulation_data_file = 'With_payload_and_noise_data_3';
+simulation_data_file = 'With_payload_and_noise_scale_0';
 load(['Data/', simulation_data_file, '.mat']) % Load simulation data
 
 Ts = 0.03;     % Desired sample time
 Ts_dmd = Ts;
 y_rows = 1:4;
 MAE_weight = [1; 1; 1; 1]; % Weighting of error of each state when calculating mean
+output_scale = [1; 1; 1; 1]; % Weighting of error of each state when calculating mean
 
 % Adjust for constant disturbance / mean control values
 % u_bar = mean(out.u.Data,1); % Input needed to keep at a fixed point
@@ -35,25 +37,25 @@ u_bar = [0, (m + M)*g];
 out.u.Data  = out.u.Data - u_bar; % Adjust for unmeasured input
 
 % Training data
-train_time = 0:Ts:300;
+train_time = 0:Ts:200;
 x_train = resample(out.x, train_time );% Resample time series to desired sample time and training period  
 u_train = resample(out.u, train_time );  
 t_train = x_train.Time';
 N_train = length(t_train);
 
 x_train = x_train.Data';
-y_train = x_train(y_rows,:);
+y_train = output_scale.*x_train(y_rows,:);
 u_train = u_train.Data';
 
 % Testing data
-test_time = 300:Ts:400;
+test_time = 200:Ts:250;
 x_test = resample(out.x, test_time );  
 u_test = resample(out.u, test_time );  
 t_test = x_test.Time';
 N_test = length(t_test); % Num of data samples for testing
 
 x_test = x_test.Data';
-y_test = x_test(y_rows,:); % One sample of testing data overlaps for initial condition
+y_test = output_scale.*x_test(y_rows,:); % One sample of testing data overlaps for initial condition
 u_test = u_test.Data';
 
 % Data dimentions
@@ -195,7 +197,7 @@ format short % back to default/short display
 results(~results.q,:) = []; % remove empty rows
 save(results_file, 'results', 'emptry_row')
 
-best_results_overall = results((results.MAE_mean == min(results.MAE_mean)),:)
+best_results = results((results.MAE_mean == min(results.MAE_mean)),:)
 
 %% Only for this Ts:
 % results_Ts = results((results.Ts == Ts),:);
@@ -203,19 +205,23 @@ best_results_overall = results((results.MAE_mean == min(results.MAE_mean)),:)
 % 
 % total_time = toc(total_timer); % Display total time taken
 % 
-% %% For one q:
-% results_q = results((results.q == 5),:);
-% figure
+%% For one q:
+results_q = results((results.q == best_results.q),:);
+figure
 % semilogy(results_q.p, results_q.MAE_1, 'r.')
 % hold on
-% semilogy(results_q.p, results_q.MAE_mean, 'k.')
+semilogy(results_q.p, results_q.MAE_mean, 'k.')
 % hold off
 
-%% Plot spread of results for this Ts
+%% Plot results
 plot_results = 1;
 if plot_results
+    figure
     semilogy(results.q, results.MAE_mean, '.')
-    ylim([1e-1, 1e0])
+    y_limits = [5e-1, 1e0];
+%     ylim(y_limits)
+    xlim([min(results.q), max(results.q)])
+    title('DMD')
 end
 
 function A = stabilise(A_unstable,max_iterations)

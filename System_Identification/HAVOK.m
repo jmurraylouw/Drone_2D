@@ -15,37 +15,37 @@
 % out.u.Data  = out.u.Data - u_bar; % Adjust for unmeasured input
 
 % Training data
-% train_time = 0:Ts:200;
-x_train = resample(out.x, train_time );% Resample time series to desired sample time and training period  
-u_train = resample(out.u, train_time );  
-t_train = x_train.Time';
-N_train = length(t_train);
-
-x_train = x_train.Data';
-y_train = x_train(y_rows,:);
-u_train = u_train.Data';
-
-% Testing data
-% test_time = 400:Ts:500;
-x_test = resample(out.x, test_time );  
-u_test = resample(out.u, test_time );  
-t_test = x_test.Time';
-N_test = length(t_test); % Num of data samples for testing
-
-x_test = x_test.Data';
-y_test = x_test(y_rows,:); % One sample of testing data overlaps for initial condition
-u_test = u_test.Data';
-
-% Data dimentions
-nx = size(x_train,1); % number of states
-ny = size(y_train,1); % number of measurements
-nu = size(u_train,1); % number of inputs
+% train_time = 0:Ts:300;
+% x_train = resample(out.x, train_time );% Resample time series to desired sample time and training period  
+% u_train = resample(out.u, train_time );  
+% t_train = x_train.Time';
+% N_train = length(t_train);
+% 
+% x_train = x_train.Data';
+% y_train = x_train(y_rows,:);
+% u_train = u_train.Data';
+% 
+% % Testing data
+% % test_time = 400:Ts:500;
+% x_test = resample(out.x, test_time );  
+% u_test = resample(out.u, test_time );  
+% t_test = x_test.Time';
+% N_test = length(t_test); % Num of data samples for testing
+% 
+% x_test = x_test.Data';
+% y_test = x_test(y_rows,:); % One sample of testing data overlaps for initial condition
+% u_test = u_test.Data';
+% 
+% % Data dimentions
+% nx = size(x_train,1); % number of states
+% ny = size(y_train,1); % number of measurements
+% nu = size(u_train,1); % number of inputs
 
 % % Add noise
 % rng('default');
 % rng(1); % Repeatable random numbers
-% sigma = 0; % Noise standard deviation
-% y_data_noise = y_data + sigma*randn(size(y_data));
+% sigma = 0.001; % Noise standard deviation
+% y_train = y_train + sigma*randn(size(y_train));
 
 % comment = ''; % Extra comment to differentiate this run
 % 
@@ -64,25 +64,31 @@ try
     q = double(best_results.q);
     p = double(best_results.p);
     
-    only_q_Ts = 1; % Try best result for specific q
+    only_q_Ts = 0; % Try best result for specific q
     if only_q_Ts
-        q = 36;
+        q = 104;
         q_results = results((results.q == q & results.Ts == Ts),:);
         best_row = find(q_results.MAE_mean == min(q_results.MAE_mean));
         best_results = q_results(best_row,:)
         p = double(best_results.p);
     end
     
+    override = 0;
+    if override
+        '!!!!!Override!!!!!!!'
+        p = 11
+        q
+    end
+    % % Override parameters:
+    % q = 80
+    % p = 40
+   
+    q
+    p
+    
 catch
     disp('No saved results file')  
 end
-
-% % Override parameters:
-% q = 80
-% p = 40
-
-q
-p
 
 w = N_train - q + 1; % num columns of Hankel matrix
 D = (q-1)*Ts; % Delay duration (Dynamics in delay embedding)
