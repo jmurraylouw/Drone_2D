@@ -52,7 +52,7 @@
 % % Read previous results
 % sigma = 0;
 % sig_str = strrep(num2str(sigma),'.','_'); % Convert sigma value to string
-% results_file = ['Data/havok_results_', comment, simulation_data_file, '_sig=', sig_str, '.mat'];
+results_file = ['Data/havok_results_', comment, simulation_data_file, '_sig=', sig_str, '.mat'];
 
 try
     load(results_file);

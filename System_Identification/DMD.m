@@ -52,7 +52,7 @@
 % % Read previous results
 % sigma = 0;
 % sig_str = strrep(num2str(sigma),'.','_'); % Convert sigma value to string
-% results_file = ['Data/havok_results_', comment, simulation_data_file, '_sig=', sig_str, '.mat'];
+results_file = ['Data/dmd_results_', comment, simulation_data_file, '_sig=', sig_str, '.mat'];
 
 try
     load(results_file);
@@ -66,7 +66,7 @@ try
     
     only_q_Ts = 0; % Try best result for specific q
     if only_q_Ts
-        q = 19;
+        q = 20;
         q_results = results((results.q == q & results.Ts == Ts),:);
         best_row = find(q_results.MAE_mean == min(q_results.MAE_mean));
         best_results = q_results(best_row,:)

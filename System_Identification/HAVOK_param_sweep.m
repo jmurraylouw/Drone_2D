@@ -22,7 +22,7 @@ q_search = q_min:q_increment:q_max; % List of q parameters to search in
 
 % Extract data
 % simulation_data_file = 'With_payload_and_noise_data_3';
-simulation_data_file = 'With_payload_and_noise_scale_0_2';
+simulation_data_file = 'With_payload_and_noise_scale_0_5';
 load(['Data/', simulation_data_file, '.mat']) % Load simulation data
 
 Ts = 0.03;     % Desired sample time
@@ -63,10 +63,10 @@ ny = size(y_train,1); % number of measurements
 nu = size(u_train,1); % number of inputs  
 
 % Add noise
-rng('default');
-rng(1); % Repeatable random numbers
-sigma = 0.01; % Noise standard deviation
-y_train = y_train + sigma*randn(size(y_train));
+% rng('default');
+% rng(1); % Repeatable random numbers
+% sigma = 0.01; % Noise standard deviation
+% y_train = y_train + sigma*randn(size(y_train));
 
 % Create empty results table
 VariableTypes = {'double', 'int16',   'int16', 'int16', 'double'}; % id, q, p, MAE
