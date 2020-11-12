@@ -8,10 +8,10 @@ total_timer = tic; % Start timer for this script
 
 % Search space
 q_min = 2; % Min value of q in grid search
-q_max = 15; % Max value of q in grid search
+q_max = 40; % Max value of q in grid search
 q_increment = 1; % Increment value of q in grid search
 
-p_min = 10; % Min value of p in grid search
+p_min = 2; % Min value of p in grid search
 p_max = q_max*4; % Max value of p in grid search
 p_increment = 1; % Increment value of p in grid search
 
@@ -63,11 +63,11 @@ nx = size(x_train,1); % number of states
 ny = size(y_train,1); % number of measurements
 nu = size(u_train,1); % number of inputs  
 
-% % Add noise
-% rng('default');
-% rng(1); % Repeatable random numbers
-% % sigma = 0.001; % Noise standard deviation
-% y_data_noise = y_data + sigma*randn(size(y_data));
+% Add noise
+rng('default');
+rng(1); % Repeatable random numbers
+sigma = 0.01; % Noise standard deviation
+y_train = y_train + sigma*randn(size(y_train));
 
 % Create empty results table
 VariableTypes = {'double', 'int16',   'int16', 'int16', 'double'}; % id, q, p, MAE

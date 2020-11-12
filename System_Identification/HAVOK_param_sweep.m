@@ -7,11 +7,11 @@
 total_timer = tic; % Start timer for this script
 
 % Search space
-q_min = 2; % Min value of q in grid search
-q_max = 15; % Max value of q in grid search
+q_min = 25; % Min value of q in grid search
+q_max = 40; % Max value of q in grid search
 q_increment = 1; % Increment value of q in grid search
 
-p_min = 10; % Min value of p in grid search
+p_min = 2; % Min value of p in grid search
 p_max = q_max*4; % Max value of p in grid search
 p_increment = 1; % Increment value of p in grid search
 
@@ -22,51 +22,51 @@ q_search = q_min:q_increment:q_max; % List of q parameters to search in
 
 % Extract data
 % simulation_data_file = 'With_payload_and_noise_data_3';
-% simulation_data_file = 'With_payload_and_noise_scale_20';
-% load(['Data/', simulation_data_file, '.mat']) % Load simulation data
+simulation_data_file = 'With_payload_and_noise_scale_0_2';
+load(['Data/', simulation_data_file, '.mat']) % Load simulation data
 
-% Ts = 0.03;     % Desired sample time
-% Ts_havok = Ts;
-% y_rows = 1:4;
-% MAE_weight = [1; 1; 1; 1]; % Weighting of error of each state when calculating mean
-% 
-% % Adjust for constant disturbance / mean control values
-% % u_bar = mean(out.u.Data,1); % Input needed to keep at a fixed point
-% u_bar = [0, (m + M)*g];
-% out.u.Data  = out.u.Data - u_bar; % Adjust for unmeasured input
+Ts = 0.03;     % Desired sample time
+Ts_havok = Ts;
+y_rows = 1:4;
+MAE_weight = [1; 1; 1; 1]; % Weighting of error of each state when calculating mean
 
-% % Training data
+% Adjust for constant disturbance / mean control values
+% u_bar = mean(out.u.Data,1); % Input needed to keep at a fixed point
+u_bar = [0, (m + M)*g];
+out.u.Data  = out.u.Data - u_bar; % Adjust for unmeasured input
+
+% Training data
 train_time = 0:Ts:200;
-% x_train = resample(out.x, train_time );% Resample time series to desired sample time and training period  
-% u_train = resample(out.u, train_time );  
-% t_train = x_train.Time';
-% N_train = length(t_train);
-% 
-% x_train = x_train.Data';
-% y_train = x_train(y_rows,:);
-% u_train = u_train.Data';
-% 
-% % Testing data
-% test_time = 300:Ts:400;
-% x_test = resample(out.x, test_time );  
-% u_test = resample(out.u, test_time );  
-% t_test = x_test.Time';
-% N_test = length(t_test); % Num of data samples for testing
-% 
-% x_test = x_test.Data';
-% y_test = x_test(y_rows,:); % One sample of testing data overlaps for initial condition
-% u_test = u_test.Data';
-% 
-% % Data dimentions
-% nx = size(x_train,1); % number of states
-% ny = size(y_train,1); % number of measurements
-% nu = size(u_train,1); % number of inputs  
+x_train = resample(out.x, train_time );% Resample time series to desired sample time and training period  
+u_train = resample(out.u, train_time );  
+t_train = x_train.Time';
+N_train = length(t_train);
 
-% % Add noise
-% rng('default');
-% rng(1); % Repeatable random numbers
-% % sigma = 0.001; % Noise standard deviation
-% y_data_noise = y_data + sigma*randn(size(y_data));
+x_train = x_train.Data';
+y_train = x_train(y_rows,:);
+u_train = u_train.Data';
+
+% Testing data
+test_time = 300:Ts:400;
+x_test = resample(out.x, test_time );  
+u_test = resample(out.u, test_time );  
+t_test = x_test.Time';
+N_test = length(t_test); % Num of data samples for testing
+
+x_test = x_test.Data';
+y_test = x_test(y_rows,:); % One sample of testing data overlaps for initial condition
+u_test = u_test.Data';
+
+% Data dimentions
+nx = size(x_train,1); % number of states
+ny = size(y_train,1); % number of measurements
+nu = size(u_train,1); % number of inputs  
+
+% Add noise
+rng('default');
+rng(1); % Repeatable random numbers
+sigma = 0.01; % Noise standard deviation
+y_train = y_train + sigma*randn(size(y_train));
 
 % Create empty results table
 VariableTypes = {'double', 'int16',   'int16', 'int16', 'double'}; % id, q, p, MAE
@@ -78,7 +78,6 @@ end
 Size = [length(q_search)*length(p_min:p_increment:p_max), length(VariableTypes)];
 
 % Read previous results
-sigma = 0;
 sig_str = strrep(num2str(sigma),'.','_'); % Convert sigma value to string
 results_file = ['Data/havok_results_', comment, simulation_data_file, '_sig=', sig_str, '.mat'];
 
@@ -207,7 +206,7 @@ plot_results = 1;
 if plot_results
     figure
     semilogy(results.q, results.MAE_mean, '.')
-%     y_limits = [1e-1, 1e0];
+    y_limits = [5e-2, 1e0];
     ylim(y_limits)
     title('HAVOK')
 end

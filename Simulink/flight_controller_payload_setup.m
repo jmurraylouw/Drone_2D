@@ -44,7 +44,7 @@ C_pz = 0.01; % Damping coef. of drone through air in z direction
 
 % Noise parameters
 Ts_noise = 0.01; % Sampling time of noise
-noise_scale = 1; % moderate = 1 (data_1), large = 10 (data_2), XL = 20 (data_3)
+noise_scale = 0.2; % moderate = 1 (data_1), large = 10 (data_2), XL = 20 (data_3)
 omega_b_noise = (6e-8)*noise_scale; % Anglular velocity. Noise power of bandwidth limited white noise
 quat_noise = (6e-8)*noise_scale; % Angles
 vel_e_noise = (4e-8)*noise_scale; % Linear Velocity
