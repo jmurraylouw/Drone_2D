@@ -7,7 +7,7 @@
 total_timer = tic; % Start timer for this script
 
 % % Search space
-q_min = 10; % Min value of q in grid search
+q_min = 18; % Min value of q in grid search
 q_max = 30; % Max value of q in grid search
 q_increment = 1; % Increment value of q in grid search
 
@@ -218,9 +218,8 @@ plot_results = 1;
 if plot_results
     figure
     semilogy(results.q, results.MAE_mean, '.')
-    y_limits = [5e-1, 1e0];
-%     ylim(y_limits)
-    xlim([min(results.q), max(results.q)])
+    y_limits = [5e-2, 1e0];
+    ylim(y_limits)
     title('DMD')
 end
 

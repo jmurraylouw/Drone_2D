@@ -73,11 +73,11 @@ try
         p = double(best_results.p);
     end
     
-    override = 0;
+    override = 1;
     if override
         '!!!!!Override!!!!!!!'
-        p = 11
-        q
+        p = 40
+%         q =20
     end
     % % Override parameters:
     % q = 80
