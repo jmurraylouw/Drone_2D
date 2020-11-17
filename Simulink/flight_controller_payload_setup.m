@@ -173,12 +173,12 @@ mpc_drone_2d.Weights.ManipulatedVariables   = 5e-1*[1, 1]*tuning_weight; % Weigh
 mpc_drone_2d.Weights.ManipulatedVariablesRate     = 1e-2*[1, 1]/tuning_weight;
 
 % Output bounds
-beta_min = -15*(pi/180);
-beta_max = abs(beta_min); % Anton's pitch command constraint
-
-mpc_drone_2d.OV(4).Min = beta_min;
-mpc_drone_2d.OV(4).Max = beta_max;
-% % 
+% beta_min = -15*(pi/180);
+% beta_max = abs(beta_min); % Anton's pitch command constraint
+% 
+% mpc_drone_2d.OV(4).Min = beta_min;
+% mpc_drone_2d.OV(4).Max = beta_max;
+% % % 
 % % Input bounds
 % 
 % % Normalised

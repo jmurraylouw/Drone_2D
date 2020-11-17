@@ -7,8 +7,8 @@
 total_timer = tic; % Start timer for this script
 
 % % Search space
-q_min = 18; % Min value of q in grid search
-q_max = 50; % Max value of q in grid search
+q_min = 2; % Min value of q in grid search
+q_max = 10; % Max value of q in grid search
 q_increment = 1; % Increment value of q in grid search
 
 p_min = 2; % Min value of p in grid search

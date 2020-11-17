@@ -7,8 +7,8 @@
 total_timer = tic; % Start timer for this script
 
 % Search space
-q_min = 18; % Min value of q in grid search
-q_max = 80; % Max value of q in grid search
+q_min = 2; % Min value of q in grid search
+q_max = 10; % Max value of q in grid search
 q_increment = 1; % Increment value of q in grid search
 
 p_min = 2; % Min value of p in grid search
@@ -22,7 +22,7 @@ q_search = q_min:q_increment:q_max; % List of q parameters to search in
 
 % Extract data
 % simulation_data_file = 'With_payload_and_noise_data_3';
-simulation_data_file = 'With_payload_and_noise_scale_2';
+simulation_data_file = 'With_payload_data_12';
 load(['Data/', simulation_data_file, '.mat']) % Load simulation data
 
 Ts = 0.03;     % Desired sample time
@@ -207,9 +207,9 @@ plot_results = 1;
 if plot_results
     figure
     semilogy(results.q, results.MAE_mean, '.')
-    y_limits = [3e-1, 1e0];
+    y_limits = [2e-2, 1e0];
     ylim(y_limits)
-    xlim([18 50])
+%     xlim([18 50])
     title('HAVOK')
 end
 

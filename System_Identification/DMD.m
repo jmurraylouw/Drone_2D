@@ -76,8 +76,9 @@ try
     override = 0;
     if override
         '!!!!!Override!!!!!!!'
-        p
         q
+        p=q*4
+        
     end
     % % Override parameters:
     % q = 80
