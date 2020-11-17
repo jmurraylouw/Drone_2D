@@ -96,7 +96,7 @@ CO = 2; % number of Controlled Outputs (x and z). theta is not controlled to a r
 dist_influence = 0; % Disturbances include uncertainty in model
 
 % Internal plant model
-model = 'havok'; % Choose which model to use for MPC
+model = 'dmd'; % Choose which model to use for MPC
 switch model
     case 'dmd'
 %         start_time = 20;
@@ -173,11 +173,11 @@ mpc_drone_2d.Weights.ManipulatedVariables   = 5e-1*[1, 1]*tuning_weight; % Weigh
 mpc_drone_2d.Weights.ManipulatedVariablesRate     = 1e-2*[1, 1]/tuning_weight;
 
 % Output bounds
-% beta_min = -15*(pi/180);
-% beta_max = abs(beta_min); % Anton's pitch command constraint
-% 
-% mpc_drone_2d.OV(4).Min = beta_min;
-% mpc_drone_2d.OV(4).Max = beta_max;
+beta_min = -15*(pi/180);
+beta_max = abs(beta_min); % Anton's pitch command constraint
+
+mpc_drone_2d.OV(4).Min = beta_min;
+mpc_drone_2d.OV(4).Max = beta_max;
 % % 
 % % Input bounds
 % 

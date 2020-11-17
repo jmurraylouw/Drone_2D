@@ -8,7 +8,7 @@ total_timer = tic; % Start timer for this script
 
 % % Search space
 q_min = 18; % Min value of q in grid search
-q_max = 30; % Max value of q in grid search
+q_max = 50; % Max value of q in grid search
 q_increment = 1; % Increment value of q in grid search
 
 p_min = 2; % Min value of p in grid search
@@ -26,7 +26,7 @@ q_search = q_min:q_increment:q_max; % List of q parameters to search in
 % load(['Data/', simulation_data_file, '.mat']) % Load simulation data
 % 
 % Ts = 0.03;     % Desired sample time
-% Ts_dmd = Ts;
+Ts_dmd = Ts;
 % y_rows = 1:4;
 % MAE_weight = [1; 1; 1; 1]; % Weighting of error of each state when calculating mean
 % output_scale = [1; 1; 1; 1]; % Weighting of error of each state when calculating mean

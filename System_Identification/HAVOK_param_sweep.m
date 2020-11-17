@@ -8,7 +8,7 @@ total_timer = tic; % Start timer for this script
 
 % Search space
 q_min = 18; % Min value of q in grid search
-q_max = 30; % Max value of q in grid search
+q_max = 80; % Max value of q in grid search
 q_increment = 1; % Increment value of q in grid search
 
 p_min = 2; % Min value of p in grid search
@@ -65,7 +65,7 @@ nu = size(u_train,1); % number of inputs
 % Add noise
 % rng('default');
 % rng(1); % Repeatable random numbers
-% sigma = 0.01; % Noise standard deviation
+sigma = 0; % Noise standard deviation
 % y_train = y_train + sigma*randn(size(y_train));
 
 % Create empty results table
@@ -78,6 +78,7 @@ end
 Size = [length(q_search)*length(p_min:p_increment:p_max), length(VariableTypes)];
 
 % Read previous results
+comment = '';
 sig_str = strrep(num2str(sigma),'.','_'); % Convert sigma value to string
 results_file = ['Data/havok_results_', comment, simulation_data_file, '_sig=', sig_str, '.mat'];
 
@@ -206,8 +207,9 @@ plot_results = 1;
 if plot_results
     figure
     semilogy(results.q, results.MAE_mean, '.')
-    y_limits = [5e-2, 1e0];
+    y_limits = [3e-1, 1e0];
     ylim(y_limits)
+    xlim([18 50])
     title('HAVOK')
 end
 

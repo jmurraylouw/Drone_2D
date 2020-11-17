@@ -64,16 +64,16 @@ try
     q = double(best_results.q);
     p = double(best_results.p);
     
-    only_q_Ts = 0; % Try best result for specific q
+    only_q_Ts = 1; % Try best result for specific q
     if only_q_Ts
-        q = 17;
+        q = 39;
         q_results = results((results.q == q & results.Ts == Ts),:);
         best_row = find(q_results.MAE_mean == min(q_results.MAE_mean));
         best_results = q_results(best_row,:)
         p = double(best_results.p);
     end
     
-    override = 1;
+    override = 0;
     if override
         '!!!!!Override!!!!!!!'
         p = 40
